@@ -30,7 +30,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // force rebuild
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body

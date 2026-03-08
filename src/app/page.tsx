@@ -6,7 +6,7 @@ import {
   Download, Trash, Search, Database, 
   CheckCircle, Star, Globe, Facebook, Instagram, Linkedin, Twitter,
   History, Zap, X, CheckSquare, Square, Mail, Phone, Share2,
-  Maximize2, Minimize2, Filter, ChevronDown
+  Maximize2, Minimize2, Filter, ChevronDown, Plus
 } from 'lucide-react';
 import { SearchableCombobox } from '@/components/Combobox';
 import { INDUSTRIES, COUNTRIES, GEOGRAPHY } from '@/lib/constants';
@@ -151,6 +151,8 @@ export default function Home() {
   const [dbManagerOpen, setDbManagerOpen] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [moveTargetId, setMoveTargetId] = useState<number | null>(null);
+  const [newCrateName, setNewCrateName] = useState('');
+  const [dbToDelete, setDbToDelete] = useState<number | null>(null);
 
   // Export Modal State
   const [exportModal, setExportModal] = useState<{ isOpen: boolean, data: Lead[], filename: string }>({
@@ -242,6 +244,7 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('lead_generator_v1_params');
+    let initialDbId = 1;
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -249,11 +252,15 @@ export default function Home() {
         if (parsed.country) setCountry(parsed.country);
         if (parsed.city) setCity(parsed.city);
         if (parsed.targetLeads) setTargetLeads(parsed.targetLeads);
+        if (parsed.activeDbId) {
+          initialDbId = parsed.activeDbId;
+          setActiveDbId(parsed.activeDbId);
+        }
       } catch (e) {}
     }
     setIsHydrated(true);
     fetchDatabases();
-    fetchSavedLeads(1);
+    fetchSavedLeads(initialDbId);
   }, []);
 
   const fetchDatabases = async () => {
@@ -278,7 +285,6 @@ export default function Home() {
 
   const deleteDatabase = async (id: number) => {
     if (id === 1) return;
-    if (!confirm("DELETE CRATE AND ALL INTERRED DATA?")) return;
     try {
       const res = await fetch('/api/databases', {
         method: 'DELETE',
@@ -298,10 +304,10 @@ export default function Home() {
   useEffect(() => {
     if (isHydrated) {
       localStorage.setItem('lead_generator_v1_params', JSON.stringify({
-        industry, country, city, targetLeads
+        industry, country, city, targetLeads, activeDbId
       }));
     }
-  }, [industry, country, city, targetLeads, isHydrated]);
+  }, [industry, country, city, targetLeads, activeDbId, isHydrated]);
 
   const fetchSavedLeads = async (db_id?: number) => {
     try {
@@ -387,7 +393,7 @@ export default function Home() {
     return <Share2 className="w-4 h-4" />;
   };
 
-  const LeadCard = ({ lead, isSelected, onToggle, isVault = false }: { lead: Lead, isSelected: boolean, onToggle: () => void, isVault?: boolean }) => {
+  const LeadCard = ({ lead, isSelected, onToggle, isVault = false, selectedCount = 0 }: { lead: Lead, isSelected: boolean, onToggle: () => void, isVault?: boolean, selectedCount?: number }) => {
     const [copyFeedback, setCopyFeedback] = useState<{ x: number, y: number } | null>(null);
     
     const socialsArray = useMemo(() => {
@@ -405,7 +411,6 @@ export default function Home() {
 
     const handleMainCopy = (e: React.MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Filter out clicks on buttons, links, or the selection toggle
       if (target.closest('button') || target.closest('a') || target.closest('.selection-trigger')) return;
 
       const report = `
@@ -424,13 +429,12 @@ export default function Home() {
     return (
       <div 
         onClick={handleMainCopy} 
-        className={`relative group p-3 rounded-2xl border transition-all cursor-pointer overflow-hidden ${
+        className={`relative group p-3 rounded-3xl border transition-all cursor-pointer overflow-visible ${
           isSelected 
-            ? 'bg-indigo-500/10 border-indigo-500/40 shadow-[0_0_30px_rgba(99,102,241,0.08)]' 
-            : 'bg-[#0f172a]/60 border-white/5 hover:border-white/10 hover:bg-[#1e293b]/60'
+            ? 'bg-indigo-500/10 border-indigo-500/40 shadow-[0_0_50px_rgba(99,102,241,0.1)]' 
+            : 'bg-[#0f172a]/40 border-white/5 hover:border-white/10 hover:bg-[#1e293b]/40'
         }`}
       >
-        {/* Floating Intelligence Copied Notification */}
         {copyFeedback && (
           <div 
             className="fixed pointer-events-none z-[9999] px-2.5 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-[0_10px_40px_rgba(79,70,229,0.4)] flex items-center gap-2 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-200"
@@ -442,11 +446,9 @@ export default function Home() {
 
         <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-300 ${isSelected ? 'bg-indigo-500' : 'bg-transparent'}`} />
         
-        {/* Header Area */}
         <div className="flex justify-between items-start gap-4">
-          <div className="flex gap-3 min-w-0">
-             {/* Dynamic Thumbnail */}
-             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-white/5 flex-shrink-0 flex items-center justify-center overflow-hidden">
+          <div className="flex gap-2.5 min-w-0">
+             <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-white/5 flex-shrink-0 flex items-center justify-center overflow-hidden">
                 {lead.image ? (
                    <img 
                       src={lead.image} 
@@ -470,15 +472,15 @@ export default function Home() {
                     {lead.businessName}
                   </h3>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[120px]">
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-[0.1em] truncate max-w-[120px]">
                     {lead.category || 'Classified_Lead'}
                   </span>
                 </div>
              </div>
           </div>
           
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
              {!isVault && (
                <button 
                  onClick={async (e) => {
@@ -492,31 +494,28 @@ export default function Home() {
                      if (res.ok) {
                        fetchSavedLeads();
                        setCopyFeedback({ x: e.clientX, y: e.clientY });
-                       // We can even remove it from session if we want, but letting it stay is fine.
                      }
                    } catch (e) {}
                  }}
-                 className="p-1 px-2 flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-600 border border-emerald-500/20 text-emerald-500 hover:text-white rounded-lg transition-all text-[8px] font-black uppercase tracking-tighter"
+                 className="p-1 px-2.5 flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-600 border border-emerald-500/20 text-emerald-500 hover:text-white rounded-xl transition-all text-[8.5px] font-black uppercase tracking-tight"
                  title="Quick Save to Vault"
                >
-                 <Database className="w-2.5 h-2.5" /> SAVE
+                 <Database className="w-3 h-3" /> SAVE
                </button>
              )}
              <div 
                onClick={(e) => { e.stopPropagation(); onToggle(); }}
-               className={`selection-trigger w-5 h-5 rounded-lg border flex items-center justify-center transition-all hover:scale-110 active:scale-90 ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 hover:border-indigo-500/50'}`}
+               className={`selection-trigger w-5 h-5 rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 hover:border-indigo-500/30'}`}
              >
                 {isSelected && <CheckSquare className="w-3.5 h-3.5 text-white" />}
              </div>
           </div>
         </div>
 
-        {/* 4-Quadrant Intelligence Grid */}
-        <div className="grid grid-cols-2 gap-1.5 mt-4">
-            {/* Phone Field */}
+        <div className="grid grid-cols-2 gap-1.5 mt-3">
             <div 
               onClick={(e) => performCopy(e, lead.phone)}
-              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.phone ? 'border-emerald-500/20 text-emerald-400' : 'border-white/5 opacity-20'}`}
+              className={`flex items-center justify-between p-2 rounded-2xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.phone ? 'border-emerald-500/20 text-emerald-400' : 'border-white/5 opacity-20'}`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Phone className="w-3 h-3 opacity-50 shrink-0" />
@@ -524,10 +523,9 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Email Field */}
             <div 
               onClick={(e) => performCopy(e, lead.email)}
-              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.email ? 'border-indigo-500/20 text-indigo-400' : 'border-white/5 opacity-20'}`}
+              className={`flex items-center justify-between p-2 rounded-2xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.email ? 'border-indigo-500/20 text-indigo-400' : 'border-white/5 opacity-20'}`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Mail className="w-3 h-3 opacity-50 shrink-0" />
@@ -535,10 +533,9 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Website Field */}
             <div 
               onClick={(e) => { if (!lead.website) return; performCopy(e, lead.website); }}
-              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.website ? 'border-sky-500/20 text-sky-400' : 'border-white/5 opacity-20'}`}
+              className={`flex items-center justify-between p-2 rounded-2xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.website ? 'border-sky-500/20 text-sky-400' : 'border-white/5 opacity-20'}`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Globe className="w-3 h-3 opacity-50 shrink-0" />
@@ -558,10 +555,9 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Rating Field (Integrated) */}
             <div 
               onClick={(e) => performCopy(e, `${lead.rating} Stars / ${lead.reviews} Reviews`)}
-              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.rating ? 'border-amber-500/20 text-amber-500' : 'border-white/5 opacity-20'}`}
+              className={`flex items-center justify-between p-2 rounded-2xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.rating ? 'border-amber-500/20 text-amber-500' : 'border-white/5 opacity-20'}`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Star className={`w-3 h-3 shrink-0 ${lead.rating ? 'fill-current' : 'opacity-50'}`} />
@@ -572,7 +568,28 @@ export default function Home() {
             </div>
         </div>
 
-        {/* Footer: Socials & Location - Tighter */}
+        {/* Dynamic Contextual Action Bar (Only for solitary selection) */}
+        {isVault && isSelected && selectedCount === 1 && (
+          <div className="mt-3 flex items-center justify-between gap-1 p-1 bg-white/5 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
+             <div className="relative group/percard flex-1">
+                <button className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-600 text-[8px] font-black text-indigo-400 hover:text-white rounded-xl transition-all uppercase tracking-tighter">
+                   <Share2 className="w-2.5 h-2.5" /> Move
+                </button>
+                <div className="absolute bottom-full left-0 mb-2 w-40 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/percard:opacity-100 group-hover/percard:visible transition-all z-[500] p-1.5 space-y-1">
+                   {databases.filter(db => db.id !== activeDbId).map(db => (
+                     <button key={db.id} onClick={(e) => { e.stopPropagation(); handleBulkMoveVault(db.id); }} className="w-full text-left p-2 rounded-xl text-[8px] font-black text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all uppercase">To: {db.name}</button>
+                   ))}
+                </div>
+             </div>
+             <button onClick={(e) => { e.stopPropagation(); triggerExport([lead], `Intelligence_${lead.id}`); }} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-white/5 hover:bg-white/10 text-[8px] font-black text-slate-400 hover:text-white rounded-xl transition-all uppercase tracking-tighter">
+                <Download className="w-2.5 h-2.5" /> Export
+             </button>
+             <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-rose-500/5 hover:bg-rose-600 text-[8px] font-black text-rose-500 hover:text-white rounded-xl transition-all uppercase tracking-tighter">
+                <Trash className="w-2.5 h-2.5" /> Delete
+             </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.03]">
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             {socialsArray.length > 0 ? (
@@ -584,13 +601,13 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="w-7 h-7 rounded-full bg-slate-900 border-2 border-[#020617] flex items-center justify-center text-slate-500 hover:text-indigo-400 transition-all hover:scale-110 shadow-lg" 
+                    className="w-7 h-7 rounded-full bg-slate-950 border-2 border-[#020617] flex items-center justify-center text-slate-500 hover:text-indigo-400 transition-all hover:scale-110 shadow-lg" 
                   >
                     <div className="scale-[0.8]"> {getSocialIcon(url)} </div>
                   </a>
                 ))}
                 {socialsArray.length > 5 && (
-                  <div className="w-7 h-7 rounded-full bg-slate-900 border-2 border-[#020617] flex items-center justify-center text-[7px] font-black text-slate-600 shadow-lg">
+                  <div className="w-7 h-7 rounded-full bg-slate-950 border-2 border-[#020617] flex items-center justify-center text-[7px] font-black text-slate-600 shadow-lg">
                     +{socialsArray.length - 5}
                   </div>
                 )}
@@ -603,7 +620,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
              <div 
                onClick={(e) => performCopy(e, lead.address)}
-               className="text-[7px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-2.5 py-1 rounded-full border border-white/5 hover:border-white/20 transition-colors flex items-center gap-2"
+               className="text-[7.5px] font-black text-slate-500 uppercase tracking-wider bg-white/5 px-2.5 py-1 rounded-full border border-white/5 hover:border-white/20 transition-colors flex items-center gap-2"
              >
                 <div className="flex-shrink-0 flex items-center" title={lead.country}>
                   {getFlagIcon(lead.country)}
@@ -861,18 +878,16 @@ export default function Home() {
               DEEP<span className="text-indigo-500">DISCOVERY</span>
               <span className="text-[9px] text-slate-500 font-mono opacity-50 px-2 uppercase tracking-[0.3em]">Module_V4.1</span>
             </h1>
-            <div className="flex items-center gap-6">
-               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
-                  <Database className="w-3 h-3 text-indigo-500" /> {savedLeads.length} SECURED
-               </div>
-               <div className="flex items-center gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
-                  <button onClick={() => triggerExport(savedLeads, 'Discovery_Vault')} disabled={savedLeads.length === 0} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all disabled:opacity-10" title="Export All">
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={clearHistory} className="p-1.5 hover:bg-rose-500/10 rounded-lg text-slate-600 hover:text-rose-500 transition-all" title="Wipe History">
-                    <History className="w-3.5 h-3.5" />
-                  </button>
-               </div>
+            <div className="flex items-center gap-4">
+               <button 
+                  onClick={() => setDbManagerOpen(true)}
+                  className="flex items-center gap-2.5 bg-indigo-500 border border-indigo-400 px-4 py-1.5 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.3)] group hover:scale-105 transition-all"
+               >
+                  <Database className="w-3.5 h-3.5 text-white" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                     {databases.find(d => d.id === activeDbId)?.name || 'Main Database'}
+                  </span>
+               </button>
             </div>
         </header>
 
@@ -897,12 +912,47 @@ export default function Home() {
                   <SearchableCombobox label="Nation" options={COUNTRIES} value={country} onChange={setCountry} required placeholder="Country" />
                   <SearchableCombobox label="City" options={availableCities} value={city} onChange={setCity} required placeholder="City" />
                 </div>
-                <div className="bg-black/30 p-3 rounded-2xl border border-white/5">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Discovery_Depth</span>
-                    <span className="text-[11px] font-black text-indigo-400 font-mono">{targetLeads}</span>
+                <div className="bg-black/30 p-3 rounded-2xl border border-white/5 space-y-3">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Leads_Target</span>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="500" 
+                      value={targetLeads} 
+                      onChange={(e) => setTargetLeads(Number(e.target.value))} 
+                      className="w-12 bg-transparent border-none p-0 text-right text-[10px] font-black text-indigo-400 font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                   </div>
-                  <input type="range" min="1" max="500" value={targetLeads} onChange={(e) => setTargetLeads(Number(e.target.value))} className="w-full h-1 bg-white/5 rounded-full appearance-none accent-indigo-500 cursor-pointer" />
+                  
+                  <div className="relative h-4 flex items-center group/slider px-1">
+                    <div className="absolute inset-x-1 h-0.5 bg-white/5 rounded-full" />
+                    <div 
+                      className="absolute h-0.5 bg-indigo-500 rounded-full transition-all duration-300" 
+                      style={{ width: `calc(${(targetLeads / 500) * 100}% - 8px)`, left: '4px' }} 
+                    />
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="500" 
+                      value={targetLeads} 
+                      onChange={(e) => setTargetLeads(Number(e.target.value))} 
+                      className="absolute inset-0 w-full h-full bg-transparent appearance-none cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-indigo-500 [&::-webkit-slider-thumb]:active:scale-110" 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-1 px-1">
+                    {[25, 50, 100, 250, 500].map((val) => (
+                      <button 
+                        key={val}
+                        type="button"
+                        onClick={() => setTargetLeads(val)}
+                        className={`py-1 rounded-md text-[7.5px] font-black uppercase tracking-tighter transition-all ${targetLeads === val ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-700 hover:text-slate-400'}`}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 group cursor-pointer" onClick={() => setAutoSave(!autoSave)}>
@@ -1056,244 +1106,177 @@ export default function Home() {
                    {/* Vault Header Container */}
                 <div className={`px-5 border-b border-indigo-500/10 flex flex-col transition-all ${isVaultExpanded ? 'bg-indigo-500/10' : 'bg-indigo-500/[0.03]'}`}>
                    {/* Row 1: Identification & Controls */}
-                   <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-5' : 'py-3'}`}>
-                      <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-colors ${isVaultExpanded ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                            <Database className={isVaultExpanded ? 'w-5 h-5' : 'w-3 h-3'} />
+                   <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-4' : 'py-2'}`}>
+                      <div className="flex items-center gap-2.5">
+                         <div className={`p-1.5 rounded-lg transition-colors ${isVaultExpanded ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                            <Database className={isVaultExpanded ? 'w-4 h-4' : 'w-3 h-3'} />
                          </div>
                          <div>
-                           <h2 className={`font-black text-white uppercase tracking-[0.2em] transition-all ${isVaultExpanded ? 'text-sm' : 'text-[10px]'}`}>
+                           <h2 className={`font-black text-white uppercase tracking-[0.15em] transition-all ${isVaultExpanded ? 'text-xs' : 'text-[9px]'}`}>
                               Secured_Vault
                            </h2>
-                           <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{savedLeads.length} Entries Recorded</p>
+                           <p className="text-[7px] text-slate-500 font-bold uppercase tracking-tight">{savedLeads.length} Records</p>
                          </div>
                       </div>
 
                       {isVaultExpanded && (
-                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
-                           <div className="text-center">
-                              <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest block mb-0.5">Active_Intelligence_Crate</span>
-                              <button 
-                                 onClick={() => setDbManagerOpen(true)}
-                                 className="flex items-center gap-3 bg-indigo-500 border border-indigo-400 px-5 py-2 rounded-2xl shadow-[0_0_20px_rgba(99,102,241,0.3)] group hover:scale-105 transition-all"
-                              >
-                                 <Database className="w-4 h-4 text-white" />
-                                 <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                                    {databases.find(d => d.id === activeDbId)?.name || 'Main Database'}
-                                 </span>
-                                 <ChevronDown className="w-3 h-3 text-indigo-200 group-hover:rotate-12 transition-transform" />
-                              </button>
-                           </div>
+                        <div className="absolute left-1/2 -translate-x-1/2">
+                           <button 
+                              onClick={() => setDbManagerOpen(true)}
+                              className="flex items-center gap-2.5 bg-indigo-500/5 border border-indigo-500/20 px-4 py-1.5 rounded-xl hover:bg-indigo-500/10 transition-all group"
+                           >
+                              <Database className="w-3.5 h-3.5 text-indigo-400" />
+                              <span className="text-[9px] font-black text-white uppercase tracking-wider">
+                                 {databases.find(d => d.id === activeDbId)?.name || 'Main'}
+                              </span>
+                           </button>
                         </div>
                       )}
 
-                      <div className="flex items-center gap-1.5">
-                         {selectedVaultIds.size > 0 && (
-                           <div className="flex items-center gap-1 p-1 bg-indigo-500/10 rounded-xl border border-indigo-500/20 mr-2">
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); selectAllVault(); }} 
-                                className="p-1 px-3 hover:bg-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase"
-                              >
-                                {selectedVaultIds.size === savedLeads.length ? 'None' : 'All'}
-                              </button>
-                              <div className="w-[1px] h-3 bg-white/5 mx-1" />
-                              
-                              <div className="relative group">
-                                <button className="flex items-center gap-1.5 p-1 px-3 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
-                                   Move_To <ChevronDown className="w-3 h-3" />
-                                </button>
-                                
-                                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[300] p-2 space-y-1 pointer-events-none group-hover:pointer-events-auto">
-                                   <span className="text-[7px] font-black text-slate-600 px-2 py-1 block uppercase tracking-tighter">Target Destination:</span>
-                                   {databases.filter(db => db.id !== activeDbId).map(db => (
-                                     <button 
-                                       key={db.id}
-                                       onClick={(e) => { e.stopPropagation(); handleBulkMoveVault(db.id); }}
-                                       className="w-full text-left p-2 rounded-xl text-[9px] font-black text-slate-400 hover:bg-white/5 hover:text-white transition-all uppercase"
-                                     >
-                                       Transfer_To: {db.name}
-                                     </button>
-                                   ))}
-                                   {databases.length <= 1 && <span className="p-2 text-[8px] text-slate-600 block text-center uppercase">No Other Crates</span>}
-                                </div>
-                              </div>
-
-                              <div className="w-[1px] h-3 bg-white/5 mx-1" />
-                              <button onClick={(e) => { e.stopPropagation(); triggerExport(savedLeads.filter(l => selectedVaultIds.has(String(l.id))), 'Vault_Selected'); }} className="p-1 px-3 hover:bg-white/5 rounded-lg text-[9px] font-black text-indigo-400 uppercase">Export</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="p-1 px-3 hover:bg-rose-500/10 rounded-lg text-[9px] font-black text-rose-500 uppercase">Delete</button>
-                           </div>
+                      <div className="flex items-center gap-1">
+                         {/* Bulk Operations Bar - Only when multiple selected */}
+                         {selectedVaultIds.size > 1 && (
+                            <div className="flex items-center gap-0.5 p-0.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mr-2 backdrop-blur-md animate-in fade-in zoom-in duration-300">
+                               <div className="relative group">
+                                 <button className="flex items-center gap-1 p-1 px-2.5 bg-indigo-600 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
+                                    MOVE <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                 </button>
+                                 
+                                 <div className="absolute top-full right-0 mt-1 w-40 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[300] p-1.5 space-y-0.5 pointer-events-none group-hover:pointer-events-auto">
+                                    {databases.filter(db => db.id !== activeDbId).map(db => (
+                                      <button 
+                                        key={db.id}
+                                        onClick={(e) => { e.stopPropagation(); handleBulkMoveVault(db.id); }}
+                                        className="w-full text-left p-1.5 rounded-lg text-[8px] font-black text-slate-400 hover:bg-white/5 hover:text-white transition-all uppercase"
+                                      >
+                                        TO: {db.name}
+                                      </button>
+                                    ))}
+                                 </div>
+                               </div>
+                               <button onClick={(e) => { e.stopPropagation(); triggerExport(savedLeads.filter(l => selectedVaultIds.has(String(l.id))), 'Vault_Selected'); }} className="p-1 px-2 hover:bg-white/5 rounded-md text-[8px] font-black text-indigo-400 hover:text-indigo-300 uppercase transition-all">EXPORT</button>
+                               <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="p-1 px-2 hover:bg-rose-500/10 rounded-md text-[8px] font-black text-rose-500 hover:text-rose-400 uppercase transition-all">DELETE</button>
+                            </div>
                          )}
                          
                          {savedLeads.length > 0 && (
-                           <button 
-                             onClick={selectAllVault}
-                             className="p-1.5 text-slate-500 hover:text-indigo-400 transition-all font-black text-[10px]"
-                             title={selectedVaultIds.size === savedLeads.length ? "Deselect All" : "Select All"}
-                           >
-                             {selectedVaultIds.size === savedLeads.length ? <CheckSquare className="w-3.5 h-3.5 text-indigo-500" /> : <Square className="w-3.5 h-3.5" />}
-                           </button>
+                            <button 
+                              onClick={selectAllVault}
+                              className="p-1 text-slate-500 hover:text-indigo-400 transition-all"
+                              title={selectedVaultIds.size === savedLeads.length ? "Deselect All" : "Select All"}
+                            >
+                              {selectedVaultIds.size === savedLeads.length ? <CheckSquare className="w-3.5 h-3.5 text-indigo-500" /> : <Square className="w-3.5 h-3.5 opacity-50" />}
+                            </button>
                          )}
                          
-                         <button onClick={() => triggerExport(savedLeads, 'Vault_Dump')} disabled={savedLeads.length === 0} className="p-1.5 text-slate-500 hover:text-white transition-all disabled:opacity-0"><Download className="w-3.5 h-3.5" /></button>
-                         
-                         <div className="w-[1px] h-4 bg-white/10 mx-2" />
+                         <button onClick={() => triggerExport(savedLeads, 'Vault_Dump')} disabled={savedLeads.length === 0} className="p-1 text-slate-500 hover:text-white transition-all disabled:opacity-0"><Download className="w-3.5 h-3.5" /></button>
+                         <div className="w-[1px] h-3 bg-white/10 mx-1.5" />
                          
                          <button 
-                           onClick={() => setIsVaultExpanded(!isVaultExpanded)}
-                           className={`p-1.5 rounded-lg transition-all ${isVaultExpanded ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                           title={isVaultExpanded ? "Close Panel (ESC)" : "Expand Intelligence Panel"}
+                            onClick={() => setIsVaultExpanded(!isVaultExpanded)}
+                            className={`p-1 rounded-md transition-all ${isVaultExpanded ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                          >
-                           {isVaultExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                         </button>
+                            {isVaultExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3 h-3" />}
+                          </button>
                       </div>
                    </div>
 
-                   {/* Dashboard Filter Bar - Mission Control Redesign */}
+                   {/* Dashboard Filter Bar - High-Density Minimal Version */}
                    {isVaultExpanded && (
-                     <div className="pb-6 animate-in fade-in slide-in-from-top-4 duration-700 ease-out">
-                        <div className="bg-slate-950/40 backdrop-blur-3xl p-5 rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col gap-5">
+                     <div className="pb-4 animate-in fade-in slide-in-from-top-2 duration-500 ease-out">
+                        <div className="bg-slate-950/40 backdrop-blur-3xl p-3 rounded-3xl border border-white/10 flex flex-col gap-3">
                            
-                           {/* Row 1: Primary Search & Global Actions */}
-                           <div className="flex flex-wrap items-center gap-4">
-                              <div className="relative group/search flex-1 min-w-[320px]">
-                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Search className="w-4 h-4 text-emerald-500/50 group-focus-within/search:text-emerald-400 group-focus-within/search:scale-110 transition-all duration-300" />
+                           {/* Primary Intelligence Search */}
+                           <div className="flex items-center gap-3">
+                              <div className="relative group/search flex-1">
+                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <Search className="w-3.5 h-3.5 text-emerald-500/50 group-focus-within/search:text-emerald-400 transition-colors" />
                                  </div>
                                  <input 
                                     type="text"
                                     value={vaultSearch}
                                     onChange={(e) => setVaultSearch(e.target.value)}
-                                    placeholder="Execute Deep Search: Name, Socials, Niche..."
-                                    className="w-full bg-black/40 border border-white/5 group-hover/search:border-white/10 focus:border-emerald-500/30 rounded-2xl pl-11 pr-4 py-3 text-[11px] font-black text-white focus:outline-none focus:ring-4 focus:ring-emerald-500/5 transition-all uppercase tracking-[0.15em] placeholder:text-slate-600 shadow-inner"
+                                    placeholder="Execute Deep Search..."
+                                    className="w-full bg-black/40 border border-white/5 focus:border-emerald-500/30 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black text-white focus:outline-none transition-all uppercase tracking-widest placeholder:text-slate-600 shadow-inner"
                                  />
-                                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                                    <span className="text-[7px] font-black text-slate-700 bg-white/5 px-2 py-1 rounded-md uppercase tracking-widest border border-white/5">Search_Query</span>
-                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                 <button 
-                                    onClick={() => {
-                                       setVaultSearch('');
-                                       setVaultCategory('ALL');
-                                       setVaultCountry('ALL');
-                                       setVaultCity('ALL');
-                                       setVaultMinRating(0);
-                                       setVaultSocialFilter('ALL');
-                                       setVaultSort('NEWEST');
-                                    }}
-                                    className="h-12 px-6 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-rose-500 text-[10px] font-black uppercase hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all tracking-widest shadow-lg shadow-rose-950/20 flex items-center gap-2 group/flush"
-                                 >
-                                    <X className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
-                                    Flush_Filters
-                                 </button>
-                              </div>
+                              <button 
+                                 onClick={() => {
+                                    setVaultSearch(''); setVaultCategory('ALL');
+                                    setVaultCountry('ALL'); setVaultCity('ALL');
+                                    setVaultMinRating(0); setVaultSocialFilter('ALL');
+                                    setVaultSort('NEWEST');
+                                 }}
+                                 className="h-9 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10 text-rose-500 text-[9px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2 group/flush"
+                              >
+                                 <X className="w-3 h-3 group-hover:rotate-90 transition-all" />
+                                 Flush
+                              </button>
                            </div>
 
-                           {/* Row 2: Precision Filters & Sorting */}
-                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                              
-                              {/* Filter Unit: Sector */}
-                              <div className="flex flex-col gap-2">
-                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
-                                    <Filter className="w-3 h-3 text-indigo-400" /> 1. Sector_Niche
-                                 </label>
-                                 <CommandSelect 
-                                    value={vaultCategory}
-                                    onChange={setVaultCategory}
-                                    options={vaultCategories.map(cat => ({ value: cat, label: String(cat === 'ALL' ? 'ALL_SECTORS' : (cat || '')) }))}
-                                    placeholder="ALL_SECTORS"
-                                    className="w-full"
-                                  />
-                              </div>
-
-                              {/* Filter Unit: Region */}
-                              <div className="flex flex-col gap-2">
-                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
-                                    <Globe className="w-3 h-3 text-emerald-400" /> 2. Region_Scope
-                                 </label>
-                                 <CommandSelect 
-                                    value={vaultCountry}
-                                    onChange={(val) => { setVaultCountry(val); setVaultCity('ALL'); }}
-                                    options={vaultCountries.map(c => ({ value: c, label: String(c === 'ALL' ? 'GLOBAL_REACH' : c) }))}
-                                    placeholder="GLOBAL_REACH"
-                                    className="w-full"
-                                 />
-                              </div>
-
-                              {/* Filter Unit: Metro */}
-                              <div className="flex flex-col gap-2">
-                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
-                                    <Globe className="w-3 h-3 text-sky-400 opacity-50" /> 3. Local_Hub
-                                 </label>
-                                 <CommandSelect 
-                                    value={vaultCity}
-                                    onChange={setVaultCity}
-                                    options={vaultCities.map(c => ({ value: c, label: String(c === 'ALL' ? 'SELECT_METRO' : c) }))}
-                                    placeholder="SELECT_METRO"
-                                    className="w-full"
-                                 />
-                              </div>
-
-                              {/* Filter Unit: Signal */}
-                              <div className="flex flex-col gap-2">
-                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
-                                    <Star className="w-3 h-3 text-amber-400" /> 4. Trust_Signal
-                                 </label>
-                                 <CommandSelect 
-                                    value={vaultMinRating}
-                                    onChange={(val) => setVaultMinRating(Number(val))}
-                                    options={[
-                                       { value: 0, label: 'ALLOW_ALL' },
-                                       { value: 4, label: 'TIER_1 (4.0+)' },
-                                       { value: 4.5, label: 'ELITE (4.5+)' }
-                                    ]}
-                                    placeholder="ALLOW_ALL"
-                                    className="w-full"
-                                 />
-                              </div>
-
-                              {/* Filter Unit: Matrix */}
-                              <div className="flex flex-col gap-2">
-                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
-                                    <Share2 className="w-3 h-3 text-pink-400" /> 5. Presence_Matrix
-                                 </label>
-                                 <CommandSelect 
-                                    value={vaultSocialFilter}
-                                    onChange={setVaultSocialFilter}
-                                    options={[
-                                       { value: 'ALL', label: 'IGNOR_SOCIAL' },
-                                       { value: 'WITH', label: 'HAS_SOCIALS' },
-                                       { value: 'WITHOUT', label: 'NO_SOCIALS' }
-                                    ]}
-                                    placeholder="IGNOR_SOCIAL"
-                                    className="w-full"
-                                 />
-                              </div>
-
-                              {/* Filter Unit: Order */}
-                              <div className="flex flex-col gap-2">
-                                 <label className="flex items-center gap-2 text-[8px] font-black text-indigo-500/50 uppercase tracking-[0.2em] ml-2">
-                                    <Zap className="w-3 h-3" /> 6. Sort_Schema
-                                 </label>
-                                 <CommandSelect 
-                                    value={vaultSort}
-                                    onChange={setVaultSort}
-                                    options={[
-                                       { value: 'NEWEST', label: 'TIME_RECENCY' },
-                                       { value: 'RATING', label: 'TOP_SIGNAL' },
-                                       { value: 'NAME', label: 'ID_ALPHABET' }
-                                    ]}
-                                    placeholder="TIME_RECENCY"
-                                    className="w-full"
-                                 />
-                              </div>
+                           {/* Precision Filter Matrix - Compact Grid */}
+                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                              <CommandSelect 
+                                 value={vaultCategory}
+                                 onChange={setVaultCategory}
+                                 options={vaultCategories.map(cat => ({ value: cat, label: String(cat === 'ALL' ? 'Sector' : cat) }))}
+                                 placeholder="Sector"
+                                 className="w-full"
+                              />
+                              <CommandSelect 
+                                 value={vaultCountry}
+                                 onChange={(val) => { setVaultCountry(val); setVaultCity('ALL'); }}
+                                 options={vaultCountries.map(c => ({ value: c, label: String(c === 'ALL' ? 'Nation' : c) }))}
+                                 placeholder="Nation"
+                                 className="w-full"
+                              />
+                              <CommandSelect 
+                                 value={vaultCity}
+                                 onChange={setVaultCity}
+                                 options={vaultCities.map(c => ({ value: c, label: String(c === 'ALL' ? 'Hub' : c) }))}
+                                 placeholder="Hub"
+                                 className="w-full"
+                              />
+                              <CommandSelect 
+                                 value={vaultMinRating}
+                                 onChange={(val) => setVaultMinRating(Number(val))}
+                                 options={[
+                                    { value: 0, label: 'Signal' },
+                                    { value: 4, label: '4.0+' },
+                                    { value: 4.5, label: '4.5+' }
+                                 ]}
+                                 placeholder="Signal"
+                                 className="w-full"
+                              />
+                              <CommandSelect 
+                                 value={vaultSocialFilter}
+                                 onChange={setVaultSocialFilter}
+                                 options={[
+                                    { value: 'ALL', label: 'Matrix' },
+                                    { value: 'WITH', label: 'Social' },
+                                    { value: 'WITHOUT', label: 'None' }
+                                 ]}
+                                 placeholder="Matrix"
+                                 className="w-full"
+                              />
+                              <CommandSelect 
+                                 value={vaultSort}
+                                 onChange={setVaultSort}
+                                 options={[
+                                    { value: 'NEWEST', label: 'Recency' },
+                                    { value: 'RATING', label: 'Rating' },
+                                    { value: 'NAME', label: 'Name' }
+                                 ]}
+                                 placeholder="Sorting"
+                                 className="w-full"
+                              />
                            </div>
                         </div>
                      </div>
                    )}
                 </div>
-
+                   
                 {/* Vault Content */}
                 <div className="flex-1 overflow-auto custom-scrollbar p-3">
                    {savedLeads.length === 0 ? (
@@ -1316,6 +1299,7 @@ export default function Home() {
                              isSelected={selectedVaultIds.has(String(lead.id))} 
                              onToggle={() => toggleSelectVault(String(lead.id))} 
                              isVault={true}
+                             selectedCount={selectedVaultIds.size}
                            />
                         ))}
                       </div>
@@ -1323,79 +1307,168 @@ export default function Home() {
                 </div>
              </div>
           </section>
-           {/* DB Manager Popup */}
-           <AnimatePresence>
-             {dbManagerOpen && (
-               <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+            {/* DB Manager Popup */}
+            <AnimatePresence>
+              {dbManagerOpen && (
+                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
                   <motion.div 
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    onClick={() => setDbManagerOpen(false)}
-                    className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }}
+                    onClick={() => {
+                      setDbManagerOpen(false);
+                      setNewCrateName('');
+                    }}
+                    className="absolute inset-0 bg-black/90 backdrop-blur-xl"
                   />
                   <motion.div
-                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    initial={{ scale: 0.9, opacity: 0, y: 30 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                    className="relative bg-slate-900 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6"
+                    exit={{ scale: 0.9, opacity: 0, y: 30 }}
+                    className="relative bg-[#020617] border border-white/5 w-full max-w-md rounded-[2.5rem] shadow-[0_0_100px_rgba(99,102,241,0.1)] overflow-hidden"
                   >
-                     <div className="flex items-center justify-between mb-8">
-                        <div>
-                           <h3 className="text-sm font-black text-white uppercase tracking-widest">Archive_Manager</h3>
-                           <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Manage Intelligence Crates</p>
-                        </div>
-                        <button onClick={() => setDbManagerOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-all">
-                           <X className="w-5 h-5 text-slate-500" />
-                        </button>
-                     </div>
-
-                     <div className="space-y-3 mb-8">
-                        {databases.map(db => (
-                          <div key={db.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${activeDbId === db.id ? 'bg-indigo-500/10 border-indigo-500/40 shadow-lg shadow-indigo-500/5' : 'bg-black/20 border-white/5 hover:bg-white/5'}`}>
-                             <div className="flex items-center gap-4">
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${activeDbId === db.id ? 'bg-indigo-500 text-white shadow-xl' : 'bg-white/5 text-slate-500'}`}>
-                                   <Database className="w-4 h-4" />
-                                </div>
-                                <span className={`text-[11px] font-black uppercase tracking-wider ${activeDbId === db.id ? 'text-white' : 'text-slate-400'}`}>{db.name}</span>
-                             </div>
-                             <div className="flex items-center gap-4">
-                                {activeDbId !== db.id ? (
-                                   <button 
-                                      onClick={() => { setActiveDbId(db.id); fetchSavedLeads(db.id); setDbManagerOpen(false); }}
-                                      className="text-[9px] font-black text-indigo-400 hover:text-white uppercase tracking-widest transition-all"
-                                   >
-                                      Switch_To
-                                   </button>
-                                ) : (
-                                   <span className="text-[7px] font-black text-indigo-500 uppercase tracking-widest px-2 py-1 bg-indigo-500/10 rounded-lg">Operational</span>
-                                )}
-                                {db.id !== 1 && (
-                                   <button onClick={() => deleteDatabase(db.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-all">
-                                      <Trash className="w-3.5 h-3.5" />
-                                   </button>
-                                )}
-                             </div>
+                    {/* Interior Glow */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+                    
+                    <div className="p-8">
+                       <div className="flex items-center justify-between mb-10">
+                          <div>
+                             <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3">
+                                <Database className="w-3.5 h-3.5 text-indigo-500" />
+                                Archive_Registry
+                             </h3>
+                             <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Active nodes for lead sequestration</p>
                           </div>
-                        ))}
-                     </div>
+                          <button 
+                            onClick={() => {
+                              setDbManagerOpen(false);
+                              setNewCrateName('');
+                            }} 
+                            className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-full transition-all text-slate-600 hover:text-white"
+                          >
+                             <X className="w-4 h-4" />
+                          </button>
+                       </div>
 
-                     <div className="p-1 bg-white/[0.02] border border-white/5 rounded-2xl">
-                        <input 
-                           type="text"
-                           placeholder="New Crate Identity..."
-                           className="w-full bg-transparent border-none px-4 py-3 text-[10px] font-black text-white focus:outline-none uppercase tracking-widest"
-                           onKeyDown={(e) => {
-                             if (e.key === 'Enter') {
-                               createDatabase((e.target as HTMLInputElement).value);
-                               (e.target as HTMLInputElement).value = '';
-                             }
-                           }}
-                        />
-                     </div>
-                     <p className="text-center text-[8px] text-slate-600 mt-4 uppercase font-black">Press [ENTER] to forge new crate</p>
+                       <div className="space-y-2 mb-10 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                          {databases.map(db => (
+                            <div 
+                              key={db.id} 
+                              onClick={() => {
+                                if (activeDbId !== db.id) {
+                                  setActiveDbId(db.id);
+                                  fetchSavedLeads(db.id);
+                                  setDbManagerOpen(false);
+                                }
+                              }}
+                              className={`group relative flex items-center justify-between p-4 rounded-2xl transition-all cursor-pointer border ${
+                                activeDbId === db.id 
+                                  ? 'bg-indigo-500/5 border-indigo-500/30' 
+                                  : 'bg-white/[0.02] border-white/[0.03] hover:border-white/10 hover:bg-white/[0.04]'
+                              }`}
+                            >
+                               <div className="flex items-center gap-4">
+                                  <div className={`w-1 h-4 rounded-full transition-all ${activeDbId === db.id ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,1)]' : 'bg-transparent'}`} />
+                                  <div className="min-w-0 flex-1">
+                                     <div className="flex items-center gap-3">
+                                        <span className={`block text-[10px] font-black uppercase tracking-wider truncate ${activeDbId === db.id ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
+                                           {db.name}
+                                        </span>
+                                        {activeDbId !== db.id && !dbToDelete && (
+                                           <span className="text-[7.5px] font-black text-indigo-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                              // Switch_To
+                                           </span>
+                                        )}
+                                     </div>
+                                     <div className="flex items-center gap-2 mt-0.5">
+                                        <div className={`w-1 h-1 rounded-full ${activeDbId === db.id ? 'bg-indigo-400 animate-pulse' : 'bg-slate-700'}`} />
+                                        <span className="text-[7px] text-slate-600 font-bold uppercase tracking-tight">Node_ID: {String(db.id).padStart(3, '0')}</span>
+                                     </div>
+                                  </div>
+                               </div>
+                               
+                               <div className="flex items-center gap-1">
+                                  {db.id !== 1 && (
+                                     dbToDelete === db.id ? (
+                                        <div className="flex items-center gap-1.5 animate-in zoom-in duration-300">
+                                           <button 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteDatabase(db.id);
+                                                setDbToDelete(null);
+                                              }} 
+                                              className="bg-rose-500 hover:bg-rose-600 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg transition-all shadow-lg shadow-rose-900/20"
+                                           >
+                                              Sure?
+                                           </button>
+                                           <button 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDbToDelete(null);
+                                              }} 
+                                              className="p-1 px-2 text-slate-500 hover:text-white text-[8px] font-black uppercase tracking-tighter"
+                                           >
+                                              Cancel
+                                           </button>
+                                        </div>
+                                     ) : (
+                                        <button 
+                                           onClick={(e) => {
+                                             e.stopPropagation();
+                                             setDbToDelete(db.id);
+                                           }} 
+                                           className="p-2 text-slate-700 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                           <Trash className="w-3.5 h-3.5" />
+                                        </button>
+                                     )
+                                  )}
+                               </div>
+                            </div>
+                          ))}
+                       </div>
+
+                       <div className="relative group/input">
+                          <div className={`absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xl transition-opacity duration-500 ${newCrateName ? 'opacity-30' : 'opacity-0'}`} />
+                          <div className="relative p-1 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center gap-2 pr-2">
+                             <input 
+                                type="text"
+                                value={newCrateName}
+                                onChange={(e) => setNewCrateName(e.target.value)}
+                                placeholder="New Registry Identity..."
+                                className="flex-1 bg-transparent border-none px-4 py-3 text-[10px] font-black text-white focus:outline-none uppercase tracking-widest placeholder:text-slate-700"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && newCrateName.trim()) {
+                                    createDatabase(newCrateName);
+                                    setNewCrateName('');
+                                  }
+                                }}
+                             />
+                             <AnimatePresence>
+                               {newCrateName.trim() && (
+                                  <motion.button
+                                    initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                    exit={{ opacity: 0, x: 20, scale: 0.8 }}
+                                    onClick={() => {
+                                      createDatabase(newCrateName);
+                                      setNewCrateName('');
+                                    }}
+                                    className="h-10 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+                                  >
+                                     <Plus className="w-3 h-3" />
+                                     Forge
+                                  </motion.button>
+                               )}
+                             </AnimatePresence>
+                          </div>
+                       </div>
+                       <p className="text-center text-[7px] text-slate-700 mt-5 uppercase font-black tracking-[0.2em] opacity-50">Authorized Personnel Only // Deep Discovery Protocol Level 4</p>
+                    </div>
                   </motion.div>
-               </div>
-             )}
-           </AnimatePresence>
+                </div>
+              )}
+            </AnimatePresence>
         </main>
       </div>
       {/* Export Selection Modal */}
