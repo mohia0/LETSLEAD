@@ -8,6 +8,9 @@ type ScrapeParams = {
   country: string;
   city: string;
   targetLeads: number;
+  activeDbId?: number;
+  allowGlobalDuplicates?: boolean;
+  autoSave?: boolean;
 };
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -253,6 +256,23 @@ export async function runScrapeJob(params: ScrapeParams) {
                     continue; 
                 }
 
+                // DEDUPLICATION PROTOCOL
+                let skip = false;
+                if (!params.allowGlobalDuplicates) {
+                   // Reject if it exists ANYWHERE
+                   const exist = db.prepare('SELECT id FROM leads WHERE businessName = ? AND city = ? AND country = ? LIMIT 1').get(businessName, city, country);
+                   if (exist) skip = true;
+                } else {
+                   // Reject ONLY if it exists in the active target database
+                   const exist = db.prepare('SELECT id FROM leads WHERE businessName = ? AND city = ? AND country = ? AND db_id = ? LIMIT 1').get(businessName, city, country, params.activeDbId || 1);
+                   if (exist) skip = true;
+                }
+
+                if (skip) {
+                   emitLog(jobId, 'WARNING', `⏩ [SKIP] Duplicate: ${businessName}`);
+                   continue;
+                }
+
                 const finalLead = {
                     businessName, website, email: emails.join(', '), phone, address: '', 
                     googleMapsLink: await element.getAttribute('href'), city, country,
@@ -261,17 +281,18 @@ export async function runScrapeJob(params: ScrapeParams) {
                 };
 
                 try {
-                  db.prepare(`
-                      INSERT INTO leads (businessName, website, email, phone, googleMapsLink, city, country, source, category, socials, rating, reviews, image)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  const targetDb = params.autoSave ? (params.activeDbId || 1) : 0; // 0 = temp buffer in DB
+                  const info = db.prepare(`
+                      INSERT INTO leads (businessName, website, email, phone, googleMapsLink, city, country, source, category, socials, rating, reviews, image, db_id)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).run(
                     finalLead.businessName, finalLead.website, finalLead.email, finalLead.phone, 
                     finalLead.googleMapsLink, finalLead.city, finalLead.country, finalLead.source,
-                    finalLead.category, finalLead.socials, finalLead.rating, finalLead.reviews, finalLead.image
+                    finalLead.category, finalLead.socials, finalLead.rating, finalLead.reviews, finalLead.image, targetDb
                   );
                   
                   leadsCollected.add(businessName);
-                  emitLead(jobId, finalLead);
+                  emitLead(jobId, { ...finalLead, id: info.lastInsertRowid.toString() });
                   emitLog(jobId, 'SUCCESS', `💎 [SECURED] Intelligence secured for: ${businessName}`);
                 } catch(e) {
                   emitLog(jobId, 'WARNING', `⏩ [SKIP] Duplicate: ${businessName}`);

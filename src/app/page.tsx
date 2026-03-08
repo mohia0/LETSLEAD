@@ -144,6 +144,7 @@ export default function Home() {
   const [vaultSocialFilter, setVaultSocialFilter] = useState<'ALL' | 'WITH' | 'WITHOUT'>('ALL');
   const [vaultSort, setVaultSort] = useState<'NEWEST' | 'RATING' | 'NAME'>('NEWEST');
   const [autoSave, setAutoSave] = useState(false);
+  const [allowGlobalDuplicates, setAllowGlobalDuplicates] = useState(false);
 
   // DB Manager State
   const [databases, setDatabases] = useState<{id: number, name: string}[]>([]);
@@ -252,6 +253,7 @@ export default function Home() {
         if (parsed.country) setCountry(parsed.country);
         if (parsed.city) setCity(parsed.city);
         if (parsed.targetLeads) setTargetLeads(parsed.targetLeads);
+        if (parsed.allowGlobalDuplicates !== undefined) setAllowGlobalDuplicates(parsed.allowGlobalDuplicates);
         if (parsed.activeDbId) {
           initialDbId = parsed.activeDbId;
           setActiveDbId(parsed.activeDbId);
@@ -304,10 +306,10 @@ export default function Home() {
   useEffect(() => {
     if (isHydrated) {
       localStorage.setItem('lead_generator_v1_params', JSON.stringify({
-        industry, country, city, targetLeads, activeDbId
+        industry, country, city, targetLeads, activeDbId, allowGlobalDuplicates
       }));
     }
-  }, [industry, country, city, targetLeads, activeDbId, isHydrated]);
+  }, [industry, country, city, targetLeads, activeDbId, allowGlobalDuplicates, isHydrated]);
 
   const fetchSavedLeads = async (db_id?: number) => {
     try {
@@ -429,7 +431,7 @@ export default function Home() {
     return (
       <div 
         onClick={handleMainCopy} 
-        className={`relative group p-3 rounded-3xl border transition-all cursor-pointer overflow-visible ${
+        className={`relative group p-3 rounded-xl border transition-all cursor-pointer overflow-visible ${
           isSelected 
             ? 'bg-indigo-500/10 border-indigo-500/40 shadow-[0_0_50px_rgba(99,102,241,0.1)]' 
             : 'bg-[#0f172a]/40 border-white/5 hover:border-white/10 hover:bg-[#1e293b]/40'
@@ -486,13 +488,14 @@ export default function Home() {
                  onClick={async (e) => {
                    e.stopPropagation();
                    try {
-                     const res = await fetch('/api/save', {
+                     const res = await fetch('/api/leads', {
                        method: 'POST',
                        headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify(lead)
+                       body: JSON.stringify({ action: 'MOVE', ids: [lead.id], target_db_id: activeDbId })
                      });
                      if (res.ok) {
                        fetchSavedLeads();
+                       setSessionLeads(prev => prev.filter(l => l.id !== lead.id));
                        setCopyFeedback({ x: e.clientX, y: e.clientY });
                      }
                    } catch (e) {}
@@ -710,7 +713,10 @@ export default function Home() {
       const res = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ industry, country, city, targetLeads }),
+        body: JSON.stringify({ 
+          industry, country, city, targetLeads,
+          activeDbId, allowGlobalDuplicates, autoSave
+        }),
       });
 
       const { jobId, error } = await res.json();
@@ -730,10 +736,10 @@ export default function Home() {
           setSessionLeads((prev) => [newLead, ...prev]);
           
           if (autoSave) {
-            fetch('/api/save', {
+            fetch('/api/leads', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(newLead)
+              body: JSON.stringify({ action: 'MOVE', ids: [newLead.id], target_db_id: activeDbId })
             }).then(() => fetchSavedLeads()).catch(() => {});
           }
         } else if (data.type === 'END' || data.type === 'ERROR') {
@@ -955,14 +961,26 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 group cursor-pointer" onClick={() => setAutoSave(!autoSave)}>
-                   <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-white uppercase tracking-widest">Auto_Sync_Vault</span>
-                      <span className="text-[8px] text-slate-500 font-bold">Auto-adds found leads to DB</span>
-                   </div>
-                   <div className={`w-8 h-4 rounded-full p-0.5 transition-all duration-300 ${autoSave ? 'bg-indigo-600' : 'bg-white/10'}`}>
-                      <div className={`w-3 h-3 rounded-full bg-white transition-all duration-300 ${autoSave ? 'translate-x-4' : 'translate-x-0'}`} />
-                   </div>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/10 group cursor-pointer" onClick={() => setAutoSave(!autoSave)}>
+                     <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[8px] font-black text-white uppercase tracking-widest">Auto_Sync</span>
+                        <div className={`w-6 h-3.5 rounded-full p-0.5 transition-all duration-300 ${autoSave ? 'bg-indigo-600' : 'bg-white/10'}`}>
+                           <div className={`w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 ${autoSave ? 'translate-x-[10px]' : 'translate-x-0'}`} />
+                        </div>
+                     </div>
+                     <span className="text-[7.5px] text-slate-500 font-bold uppercase leading-tight truncate">Sync to DB</span>
+                  </div>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/10 group cursor-pointer" onClick={() => setAllowGlobalDuplicates(!allowGlobalDuplicates)}>
+                     <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[8px] font-black text-white uppercase tracking-widest">Global_Dupes</span>
+                        <div className={`w-6 h-3.5 rounded-full p-0.5 transition-all duration-300 ${allowGlobalDuplicates ? 'bg-indigo-600' : 'bg-white/10'}`}>
+                           <div className={`w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 ${allowGlobalDuplicates ? 'translate-x-[10px]' : 'translate-x-0'}`} />
+                        </div>
+                     </div>
+                     <span className="text-[7.5px] text-slate-500 font-bold uppercase leading-tight truncate">{allowGlobalDuplicates ? 'Allow matches' : 'Require Unique'}</span>
+                  </div>
                 </div>
 
                 {isScraping ? (
@@ -993,9 +1011,9 @@ export default function Home() {
                   <button 
                     onClick={() => setLogs([])}
                     className="p-1 px-2 rounded-md hover:bg-white/5 text-[9px] font-black text-slate-600 hover:text-indigo-400 transition-all uppercase tracking-tighter"
-                    title="Flush Terminal"
+                    title="Clear Terminal Logs"
                   >
-                   Flush
+                   Clear Logs
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 font-mono text-[9px] space-y-2 custom-scrollbar scrolling-touch">
@@ -1036,24 +1054,38 @@ export default function Home() {
                         <>
                           <button 
                             onClick={async () => {
-                              const batch = [...sessionLeads];
-                              for (const l of batch) {
-                                await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(l) });
-                              }
-                              fetchSavedLeads();
-                              alert(`${batch.length} leads prioritized for permanent storage.`);
+                              try {
+                                const ids = sessionLeads.map(l => l.id);
+                                await fetch('/api/leads', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ action: 'MOVE', ids, target_db_id: activeDbId })
+                                });
+                                fetchSavedLeads();
+                                setSessionLeads([]); 
+                                setSelectedSessionIds(new Set());
+                              } catch (e) {}
                             }}
                             className="p-1 px-2 flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-600 border border-indigo-500/20 text-indigo-500 hover:text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-tighter"
-                            title="Commit Buffer to Vault"
+                            title="Commit Lead Buffer to Active Database"
                           >
-                            <Database className="w-3 h-3" /> Commit
+                            <Database className="w-3 h-3" /> Commit Leads
                           </button>
                           <button 
-                            onClick={() => { setSessionLeads([]); setSelectedSessionIds(new Set()); }}
+                            onClick={() => {
+                              try {
+                                const ids = sessionLeads.map(l => l.id);
+                                if (ids.length > 0) {
+                                  fetch('/api/leads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+                                }
+                              } catch(e) {}
+                              setSessionLeads([]); 
+                              setSelectedSessionIds(new Set()); 
+                            }}
                             className="p-1 px-2 bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 text-rose-500 hover:text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-tighter"
-                            title="Purge Discovery Buffer"
+                            title="Clear Discovery Buffer Without Saving"
                           >
-                            Flush
+                            Clear Buffer
                           </button>
                         </>
                       )}
@@ -1104,19 +1136,17 @@ export default function Home() {
           <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5'}`}>
              <div className={`glass rounded-3xl flex flex-col flex-1 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
                    {/* Vault Header Container */}
-                <div className={`px-5 border-b border-indigo-500/10 flex flex-col transition-all ${isVaultExpanded ? 'bg-indigo-500/10' : 'bg-indigo-500/[0.03]'}`}>
+                <div className={`px-5 border-b border-white/5 flex flex-col transition-all ${isVaultExpanded ? 'bg-slate-900/40' : 'bg-white/[0.02]'}`}>
                    {/* Row 1: Identification & Controls */}
-                   <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-4' : 'py-2'}`}>
-                      <div className="flex items-center gap-2.5">
-                         <div className={`p-1.5 rounded-lg transition-colors ${isVaultExpanded ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                            <Database className={isVaultExpanded ? 'w-4 h-4' : 'w-3 h-3'} />
-                         </div>
-                         <div>
-                           <h2 className={`font-black text-white uppercase tracking-[0.15em] transition-all ${isVaultExpanded ? 'text-xs' : 'text-[9px]'}`}>
-                              Secured_Vault
-                           </h2>
-                           <p className="text-[7px] text-slate-500 font-bold uppercase tracking-tight">{savedLeads.length} Records</p>
-                         </div>
+                   <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-4' : 'py-3'}`}>
+                      <div className="flex items-center gap-3">
+                          <h2 className={`font-black text-white uppercase tracking-widest flex items-center gap-2 ${isVaultExpanded ? 'text-xs' : 'text-[10px]'}`}>
+                              <Database className={`text-indigo-500 ${isVaultExpanded ? 'w-4 h-4' : 'w-3 h-3'}`} /> Secured_Vault
+                          </h2>
+                          <div className="flex items-center gap-2">
+                             <div className="h-4 w-[1px] bg-white/10" />
+                             <span className="text-[8px] text-slate-500 font-bold uppercase tracking-tight bg-white/5 px-2 py-0.5 rounded-md border border-white/5">{savedLeads.length} Records</span>
+                          </div>
                       </div>
 
                       {isVaultExpanded && (
@@ -1209,9 +1239,10 @@ export default function Home() {
                                     setVaultSort('NEWEST');
                                  }}
                                  className="h-9 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10 text-rose-500 text-[9px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2 group/flush"
+                                 title="Clear Activity Filters"
                               >
                                  <X className="w-3 h-3 group-hover:rotate-90 transition-all" />
-                                 Flush
+                                 Reset Filters
                               </button>
                            </div>
 

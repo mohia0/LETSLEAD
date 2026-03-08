@@ -55,9 +55,10 @@ for (const col of migrations) {
   } catch (e) {}
 }
 
-// Emergency cleanup to ensure visibility
+// Buffer cleanup on startup
 try {
-  db.prepare('UPDATE leads SET db_id = 1 WHERE db_id IS NULL OR db_id = 0').run();
+  db.prepare('DELETE FROM leads WHERE db_id = 0').run();
+  db.prepare('UPDATE leads SET db_id = 1 WHERE db_id IS NULL').run();
 } catch (e) {}
 
 export default db;

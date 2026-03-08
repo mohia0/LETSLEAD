@@ -4,7 +4,7 @@ import { runScrapeJob } from '@/lib/scraper';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { industry, country, city, targetLeads } = body;
+    const { industry, country, city, targetLeads, activeDbId, allowGlobalDuplicates, autoSave } = body;
 
     if (!industry || !country || !city || !targetLeads) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -20,6 +20,9 @@ export async function POST(req: Request) {
       country,
       city,
       targetLeads: parseInt(targetLeads, 10),
+      activeDbId: activeDbId || 1,
+      allowGlobalDuplicates: !!allowGlobalDuplicates,
+      autoSave: !!autoSave
     });
 
     return NextResponse.json({ jobId });
