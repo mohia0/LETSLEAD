@@ -210,11 +210,50 @@ export async function runScrapeJob(params: ScrapeParams) {
 
                         // DATA EXTRACTION (Category, Rating, Reviews)
                         category = panel.querySelector('button[jsaction*="category"]')?.textContent?.trim() || '';
-                        const ratingStr = panel.querySelector('span[role="img"][aria-label*="stars"]')?.getAttribute('aria-label') || '';
-                        const rMatch = ratingStr.match(/([0-9.]+)\s*stars/i);
-                        if (rMatch) rating = parseFloat(rMatch[1]);
-                        const reviewMatch = ratingStr.match(/([0-9,]+)\s*Reviews/i);
-                        if (reviewMatch) reviews = parseInt(reviewMatch[1].replace(/,/g, ''), 10);
+                        
+                        // Stage 1: Standard ARIA Label Selection
+                        const ratingEl = panel.querySelector('span[role="img"][aria-label*="stars"], span[role="img"][aria-label*="نجوم"], span[aria-label*="stars"]');
+                        const ratingStr = ratingEl ? ratingEl.getAttribute('aria-label') || '' : '';
+                        
+                        const rMatch = ratingStr.match(/([0-9,.]+)\s*(?:stars|نجوم|star)/i);
+                        if (rMatch) rating = parseFloat(rMatch[1].replace(',', '.'));
+                        
+                        const reviewMatch = ratingStr.match(/([0-9.,]+)\s*(?:Reviews|Review|مراجعة|مراجعات)/i);
+                        if (reviewMatch) reviews = parseInt(reviewMatch[1].replace(/[.,]/g, ''), 10);
+
+                        // Stage 2: Parent Row Fallback (Catches visually adjacent formats like "4.8 (1,234)")
+                        if (!rating || !reviews) {
+                            const elements = Array.from(panel.querySelectorAll('div, span'));
+                            for (const el of elements) {
+                                const txt = el.textContent?.trim() || '';
+                                if (txt.length < 40 && txt.includes('(') && txt.includes(')')) {
+                                    const fallRating = txt.match(/([0-9][.,][0-9])\s*\(/);
+                                    if (fallRating && !rating) rating = parseFloat(fallRating[1].replace(',', '.'));
+                                    
+                                    const fallReviews = txt.match(/\(([0-9.,]+)\)/);
+                                    if (fallReviews && !reviews) reviews = parseInt(fallReviews[1].replace(/[.,]/g, ''), 10);
+                                    
+                                    if (rating && reviews) break;
+                                }
+                            }
+                        }
+
+                        // Stage 3: Isolated Span Fallback (Aggressive final sweep)
+                        if (!rating) {
+                            const isolateRating = Array.from(panel.querySelectorAll('span')).find(s => {
+                                const t = s.textContent?.trim() || '';
+                                return /^[0-5][.,][0-9]$/.test(t);
+                            });
+                            if (isolateRating) rating = parseFloat(isolateRating.textContent!.replace(',', '.'));
+                        }
+
+                        if (!reviews) {
+                            const isolateReviews = Array.from(panel.querySelectorAll('span')).find(s => {
+                                const t = s.textContent?.trim() || '';
+                                return /^\([0-9.,]+\)$/.test(t);
+                            });
+                            if (isolateReviews) reviews = parseInt(isolateReviews.textContent!.replace(/[().,]/g, ''), 10);
+                        }
 
                         // IMAGE EXTRACTION
                         let image = '';

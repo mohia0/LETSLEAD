@@ -6,7 +6,7 @@ import {
   Download, Trash, Search, Database, 
   CheckCircle, Star, Globe, Facebook, Instagram, Linkedin, Twitter,
   History, Zap, X, CheckSquare, Square, Mail, Phone, Share2,
-  Maximize2, Minimize2, Filter, ChevronDown, Plus
+  Maximize2, Minimize2, Filter, ChevronDown, Plus, Check
 } from 'lucide-react';
 import { SearchableCombobox } from '@/components/Combobox';
 import { INDUSTRIES, COUNTRIES, GEOGRAPHY } from '@/lib/constants';
@@ -510,7 +510,7 @@ export default function Home() {
                onClick={(e) => { e.stopPropagation(); onToggle(); }}
                className={`selection-trigger w-5 h-5 rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 hover:border-indigo-500/30'}`}
              >
-                {isSelected && <CheckSquare className="w-3.5 h-3.5 text-white" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
              </div>
           </div>
         </div>
@@ -1102,7 +1102,13 @@ export default function Home() {
                           className="p-1.5 text-slate-500 hover:text-indigo-400 transition-all"
                           title={selectedSessionIds.size === sessionLeads.length ? "Deselect All" : "Select All"}
                         >
-                          {selectedSessionIds.size === sessionLeads.length ? <CheckSquare className="w-3.5 h-3.5 text-indigo-500" /> : <Square className="w-3.5 h-3.5" />}
+                          {selectedSessionIds.size === sessionLeads.length ? (
+                            <div className="w-3.5 h-3.5 rounded bg-indigo-500 flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                            </div>
+                          ) : (
+                            <div className="w-3.5 h-3.5 rounded border border-slate-500/50" />
+                          )}
                         </button>
                       )}
                       
@@ -1134,7 +1140,7 @@ export default function Home() {
 
           {/* Column 3: Secured Vault */}
           <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5'}`}>
-             <div className={`glass rounded-3xl flex flex-col flex-1 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
+             <div className={`glass rounded-3xl overflow-hidden flex flex-col flex-1 min-h-0 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
                    {/* Vault Header Container */}
                 <div className={`px-5 border-b border-white/5 flex flex-col transition-all ${isVaultExpanded ? 'bg-slate-900/40' : 'bg-white/[0.02]'}`}>
                    {/* Row 1: Identification & Controls */}
@@ -1195,7 +1201,13 @@ export default function Home() {
                               className="p-1 text-slate-500 hover:text-indigo-400 transition-all"
                               title={selectedVaultIds.size === savedLeads.length ? "Deselect All" : "Select All"}
                             >
-                              {selectedVaultIds.size === savedLeads.length ? <CheckSquare className="w-3.5 h-3.5 text-indigo-500" /> : <Square className="w-3.5 h-3.5 opacity-50" />}
+                              {selectedVaultIds.size === savedLeads.length ? (
+                                <div className="w-3.5 h-3.5 rounded bg-indigo-500 flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                </div>
+                              ) : (
+                                <div className="w-3.5 h-3.5 rounded border border-slate-500/50" />
+                              )}
                             </button>
                          )}
                          
@@ -1309,7 +1321,7 @@ export default function Home() {
                 </div>
                    
                 {/* Vault Content */}
-                <div className="flex-1 overflow-auto custom-scrollbar p-3">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0">
                    {savedLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full opacity-10 gap-4">
                         <Database className="w-16 h-16" />
@@ -1562,7 +1574,7 @@ export default function Home() {
                     >
                       <div className="flex items-center gap-2 truncate">
                         <div className={`w-3.5 h-3.5 rounded flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500' : 'bg-white/10'}`}>
-                          {isSelected && <CheckSquare className="w-2.5 h-2.5" />}
+                          {isSelected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                         </div>
                         {field.label}
                       </div>
