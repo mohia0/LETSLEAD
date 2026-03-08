@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Download, Trash, Search, Database, 
   CheckCircle, Star, Globe, Facebook, Instagram, Linkedin, Twitter,
   History, Zap, X, CheckSquare, Square, Mail, Phone, Share2,
-  Maximize2, Minimize2, Filter
+  Maximize2, Minimize2, Filter, ChevronDown
 } from 'lucide-react';
 import { SearchableCombobox } from '@/components/Combobox';
 import { INDUSTRIES, COUNTRIES, GEOGRAPHY } from '@/lib/constants';
@@ -38,6 +39,87 @@ interface Lead {
   savedAt?: string;
 }
 
+
+
+function CommandSelect({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder,
+  className = "" 
+}: { 
+  value: any, 
+  onChange: (val: any) => void, 
+  options: { value: any, label: string }[], 
+  placeholder: string,
+  className?: string
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const [selectedLabel, setSelectedLabel] = useState(placeholder);
+
+  useEffect(() => {
+    const found = options.find(o => o.value === value);
+    if (found && found.label) setSelectedLabel(found.label);
+    else setSelectedLabel(placeholder);
+  }, [value, options, placeholder]);
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-indigo-500/5 border border-white/5 rounded-xl px-4 py-2.5 text-[10px] font-black text-white hover:bg-white/5 transition-all uppercase tracking-tighter"
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 5, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute z-[300] top-full left-0 w-full min-w-[160px] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
+          >
+            <div className="max-h-[250px] overflow-auto custom-scrollbar p-1.5">
+              {options.map((option) => {
+                const isSelected = option.value === value;
+                return (
+                  <button
+                    key={String(option.value)}
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all mb-0.5 last:mb-0 ${
+                      isSelected 
+                        ? 'bg-indigo-500 text-white' 
+                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Home() {
   const [industry, setIndustry] = useState('');
   const [country, setCountry] = useState('');
@@ -56,7 +138,19 @@ export default function Home() {
   const [isVaultExpanded, setIsVaultExpanded] = useState(false);
   const [vaultSearch, setVaultSearch] = useState('');
   const [vaultCategory, setVaultCategory] = useState('ALL');
+  const [vaultCountry, setVaultCountry] = useState('ALL');
+  const [vaultCity, setVaultCity] = useState('ALL');
+  const [vaultMinRating, setVaultMinRating] = useState(0);
+  const [vaultSocialFilter, setVaultSocialFilter] = useState<'ALL' | 'WITH' | 'WITHOUT'>('ALL');
+  const [vaultSort, setVaultSort] = useState<'NEWEST' | 'RATING' | 'NAME'>('NEWEST');
   const [autoSave, setAutoSave] = useState(false);
+
+  // DB Manager State
+  const [databases, setDatabases] = useState<{id: number, name: string}[]>([]);
+  const [activeDbId, setActiveDbId] = useState(1);
+  const [dbManagerOpen, setDbManagerOpen] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [moveTargetId, setMoveTargetId] = useState<number | null>(null);
 
   // Export Modal State
   const [exportModal, setExportModal] = useState<{ isOpen: boolean, data: Lead[], filename: string }>({
@@ -97,22 +191,54 @@ export default function Home() {
   }, []);
 
   const filteredVaultLeads = useMemo(() => {
-    return savedLeads.filter(lead => {
+    let filtered = savedLeads.filter(lead => {
       const matchesSearch = !vaultSearch || 
         lead.businessName.toLowerCase().includes(vaultSearch.toLowerCase()) ||
         (lead.category && lead.category.toLowerCase().includes(vaultSearch.toLowerCase())) ||
-        (lead.socials && lead.socials.toLowerCase().includes(vaultSearch.toLowerCase()));
+        (lead.socials && lead.socials.toLowerCase().includes(vaultSearch.toLowerCase())) ||
+        (lead.country && lead.country.toLowerCase().includes(vaultSearch.toLowerCase())) ||
+        (lead.city && lead.city.toLowerCase().includes(vaultSearch.toLowerCase()));
       
       const matchesCategory = vaultCategory === 'ALL' || lead.category === vaultCategory;
+      const matchesCountry = vaultCountry === 'ALL' || lead.country === vaultCountry;
+      const matchesCity = vaultCity === 'ALL' || lead.city === vaultCity;
+      const matchesRating = (lead.rating || 0) >= vaultMinRating;
       
-      return matchesSearch && matchesCategory;
+      const hasSocials = lead.socials && lead.socials.trim().length > 0;
+      const matchesSocial = vaultSocialFilter === 'ALL' || 
+        (vaultSocialFilter === 'WITH' ? hasSocials : !hasSocials);
+      
+      return matchesSearch && matchesCategory && matchesCountry && matchesCity && matchesRating && matchesSocial;
     });
-  }, [savedLeads, vaultSearch, vaultCategory]);
+
+    // Sorting logic
+    return filtered.sort((a, b) => {
+      if (vaultSort === 'RATING') return (b.rating || 0) - (a.rating || 0);
+      if (vaultSort === 'NAME') return a.businessName.localeCompare(b.businessName);
+      // NEWEST: Use savedAt if available, or just original order (which is usually newest based on DB)
+      return new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime();
+    });
+  }, [savedLeads, vaultSearch, vaultCategory, vaultCountry, vaultCity, vaultMinRating, vaultSort]);
 
   const vaultCategories = useMemo(() => {
     const cats = new Set(savedLeads.map(l => l.category).filter(Boolean));
     return ['ALL', ...Array.from(cats)].sort();
   }, [savedLeads]);
+
+  const vaultCountries = useMemo(() => {
+    const existing = new Set(savedLeads.map(l => l.country).filter(Boolean));
+    // Filter the full COUNTRIES list from constants to only what exists in DB, but keep the order
+    const ordered = COUNTRIES.filter(c => existing.has(c));
+    return ['ALL', ...ordered];
+  }, [savedLeads]);
+
+  const vaultCities = useMemo(() => {
+    const cities = new Set(savedLeads
+      .filter(l => vaultCountry === 'ALL' || l.country === vaultCountry)
+      .map(l => l.city)
+      .filter(Boolean));
+    return ['ALL', ...Array.from(cities)].sort();
+  }, [savedLeads, vaultCountry]);
 
   useEffect(() => {
     const saved = localStorage.getItem('lead_generator_v1_params');
@@ -126,8 +252,48 @@ export default function Home() {
       } catch (e) {}
     }
     setIsHydrated(true);
-    fetchSavedLeads();
+    fetchDatabases();
+    fetchSavedLeads(1);
   }, []);
+
+  const fetchDatabases = async () => {
+    try {
+      const res = await fetch('/api/databases');
+      const data = await res.json();
+      if (!data.error) setDatabases(data);
+    } catch (e) {}
+  };
+
+  const createDatabase = async (name: string) => {
+    if (!name) return;
+    try {
+      const res = await fetch('/api/databases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) fetchDatabases();
+    } catch (e) {}
+  };
+
+  const deleteDatabase = async (id: number) => {
+    if (id === 1) return;
+    if (!confirm("DELETE CRATE AND ALL INTERRED DATA?")) return;
+    try {
+      const res = await fetch('/api/databases', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        fetchDatabases();
+        if (activeDbId === id) {
+           setActiveDbId(1);
+           fetchSavedLeads(1);
+        }
+      }
+    } catch (e) {}
+  };
 
   useEffect(() => {
     if (isHydrated) {
@@ -137,9 +303,10 @@ export default function Home() {
     }
   }, [industry, country, city, targetLeads, isHydrated]);
 
-  const fetchSavedLeads = async () => {
+  const fetchSavedLeads = async (db_id?: number) => {
     try {
-      const res = await fetch('/api/leads');
+      const targetId = db_id || activeDbId;
+      const res = await fetch(`/api/leads?db_id=${targetId}`);
       const data = await res.json();
       if (!data.error) setSavedLeads(data);
     } catch (e) {}
@@ -177,12 +344,26 @@ export default function Home() {
       "Netherlands": "nl",
       "United Arab Emirates": "ae",
       "Saudi Arabia": "sa",
+      "Kuwait": "kw",
+      "Qatar": "qa",
+      "Bahrain": "bh",
+      "Oman": "om",
+      "Egypt": "eg",
+      "Jordan": "jo",
+      "Lebanon": "lb",
+      "Morocco": "ma",
+      "Tunisia": "tn",
+      "Algeria": "dz",
+      "Iraq": "iq",
+      "Palestine": "ps",
+      "Libya": "ly",
+      "Syria": "sy",
+      "Sudan": "sd",
       "Singapore": "sg",
       "New Zealand": "nz",
       "Ireland": "ie",
       "Sweden": "se",
-      "Norway": "no",
-      "Egypt": "eg"
+      "Norway": "no"
     };
 
     const code = countryToIso[countryName] || countryName.toLowerCase();
@@ -451,6 +632,29 @@ export default function Home() {
       }
     } catch (e) {}
   };
+  const handleBulkMoveVault = async (targetDbId: number) => {
+    if (selectedVaultIds.size === 0) return;
+    setIsMoving(true);
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'MOVE', 
+          ids: Array.from(selectedVaultIds),
+          target_db_id: targetDbId
+        })
+      });
+      if (res.ok) {
+        setSavedLeads(prev => prev.filter(l => !selectedVaultIds.has(String(l.id))));
+        setSelectedVaultIds(new Set());
+        setMoveTargetId(null);
+      }
+    } catch (e) {} finally {
+      setIsMoving(false);
+    }
+  };
+
 
   const handleBulkDeleteSession = () => {
     if (selectedSessionIds.size === 0) return;
@@ -567,34 +771,49 @@ export default function Home() {
       return;
     }
 
-    // Get selected labels for header
-    const selectedHeaders = AVAILABLE_FIELDS
-      .filter(f => exportFields.includes(f.id))
-      .map(f => f.label);
+    // Get selected labels/fields for the export
+    const selectedFields = AVAILABLE_FIELDS.filter(f => exportFields.includes(f.id));
 
-    const rows = data.map(l => 
-      exportFields.map(fieldId => {
-        let val = (l as any)[fieldId];
-        if (!val) return '""';
-        
-        const cleanVal = String(val).replace(/"/g, '""');
-        
-        // Fix for Excel: Force string format for phone numbers to preserve leading zeros
-        if (fieldId === 'phone') {
-          return `="\"${cleanVal}\""`;
-        }
-        
-        return `"\"${cleanVal}\""`;
-      }).join(',')
-    );
+    // Premium intelligence export via HTML-XLS trick (fixes styles and Arabic)
+    const htmlTable = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <style>
+          table { border: 1px solid #E2E8F0; border-collapse: collapse; font-family: sans-serif; }
+          th { background-color: #4F46E5; color: #FFFFFF; font-weight: bold; padding: 12px 8px; border: 1px solid #E2E8F0; text-transform: uppercase; font-size: 11px; text-align: left; }
+          td { border: 1px solid #E2E8F0; padding: 10px 8px; font-size: 10px; color: #334155; }
+          .phone-cell { mso-number-format:"\\@"; } /* This forces Excel to treat phones as text */
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              ${selectedFields.map(f => `<th>${f.label}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(l => `
+              <tr>
+                ${selectedFields.map(f => {
+                  const val = (l as any)[f.id] || '';
+                  const className = f.id === 'phone' ? 'phone-cell' : '';
+                  return `<td class="${className}">${String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `.trim();
 
-    // Add 'sep=,' for Excel auto-delimiter detection
-    const csvContent = ['sep=,', selectedHeaders.join(','), ...rows].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([htmlTable], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${filename}_${new Date().getTime()}.csv`;
+    a.download = `${filename}_${new Date().getTime()}.xls`;
     a.click();
     
     setExportModal(prev => ({ ...prev, isOpen: false }));
@@ -833,89 +1052,246 @@ export default function Home() {
 
           {/* Column 3: Secured Vault */}
           <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5'}`}>
-             <div className={`glass rounded-3xl overflow-hidden flex flex-col flex-1 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
-                
-                {/* Vault Header */}
-                <div className={`px-5 py-3 border-b border-indigo-500/10 flex items-center justify-between transition-all ${isVaultExpanded ? 'bg-indigo-500/10 py-5' : 'bg-indigo-500/[0.03]'}`}>
-                   <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl transition-colors ${isVaultExpanded ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                         <Database className={isVaultExpanded ? 'w-5 h-5' : 'w-3 h-3'} />
+             <div className={`glass rounded-3xl flex flex-col flex-1 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
+                   {/* Vault Header Container */}
+                <div className={`px-5 border-b border-indigo-500/10 flex flex-col transition-all ${isVaultExpanded ? 'bg-indigo-500/10' : 'bg-indigo-500/[0.03]'}`}>
+                   {/* Row 1: Identification & Controls */}
+                   <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-5' : 'py-3'}`}>
+                      <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-colors ${isVaultExpanded ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                            <Database className={isVaultExpanded ? 'w-5 h-5' : 'w-3 h-3'} />
+                         </div>
+                         <div>
+                           <h2 className={`font-black text-white uppercase tracking-[0.2em] transition-all ${isVaultExpanded ? 'text-sm' : 'text-[10px]'}`}>
+                              Secured_Vault
+                           </h2>
+                           <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{savedLeads.length} Entries Recorded</p>
+                         </div>
                       </div>
-                      <div>
-                        <h2 className={`${isVaultExpanded ? 'text-sm' : 'text-[10px]'} font-black text-white uppercase tracking-widest flex items-center gap-2`}>
-                            Intelligence_Secured
-                            {isVaultExpanded && <span className="text-indigo-400/50 text-[10px] lowercase font-mono">({filteredVaultLeads.length} items)</span>}
-                        </h2>
-                        {isVaultExpanded && <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter mt-0.5">Global Archive / Read_Write_Access</p>}
-                      </div>
-                   </div>
 
-                    <div className="flex items-center gap-1.5">
-                      {/* Search & Filter - Only visible when expanded */}
                       {isVaultExpanded && (
-                        <div className="flex items-center gap-3 mr-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                          <div className="relative group/search">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-focus-within/search:text-indigo-400 transition-colors" />
-                            <input 
-                              type="text"
-                              value={vaultSearch}
-                              onChange={(e) => setVaultSearch(e.target.value)}
-                              placeholder="SEARCH_NAME_CAT_SOCIAL..."
-                              className="w-64 bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[10px] font-black text-white placeholder:text-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all uppercase tracking-widest"
-                            />
-                          </div>
-                          
-                          <div className="relative group/filter">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-hover/filter:text-indigo-400 transition-colors" />
-                            <select 
-                              value={vaultCategory}
-                              onChange={(e) => setVaultCategory(e.target.value)}
-                              className="appearance-none w-48 bg-black/40 border border-white/5 rounded-xl pl-9 pr-8 py-2 text-[10px] font-black text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all uppercase tracking-widest cursor-pointer"
-                            >
-                              {vaultCategories.map(cat => (
-                                <option key={cat} value={cat} className="bg-slate-900">{cat === 'ALL' ? 'ALL_CATEGORIES' : cat}</option>
-                              ))}
-                            </select>
-                          </div>
+                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+                           <div className="text-center">
+                              <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest block mb-0.5">Active_Intelligence_Crate</span>
+                              <button 
+                                 onClick={() => setDbManagerOpen(true)}
+                                 className="flex items-center gap-3 bg-indigo-500 border border-indigo-400 px-5 py-2 rounded-2xl shadow-[0_0_20px_rgba(99,102,241,0.3)] group hover:scale-105 transition-all"
+                              >
+                                 <Database className="w-4 h-4 text-white" />
+                                 <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                                    {databases.find(d => d.id === activeDbId)?.name || 'Main Database'}
+                                 </span>
+                                 <ChevronDown className="w-3 h-3 text-indigo-200 group-hover:rotate-12 transition-transform" />
+                              </button>
+                           </div>
                         </div>
                       )}
 
-                      {selectedVaultIds.size > 0 && (
-                        <div className="flex items-center gap-1 p-0.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mr-2">
+                      <div className="flex items-center gap-1.5">
+                         {selectedVaultIds.size > 0 && (
+                           <div className="flex items-center gap-1 p-1 bg-indigo-500/10 rounded-xl border border-indigo-500/20 mr-2">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); selectAllVault(); }} 
+                                className="p-1 px-3 hover:bg-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase"
+                              >
+                                {selectedVaultIds.size === savedLeads.length ? 'None' : 'All'}
+                              </button>
+                              <div className="w-[1px] h-3 bg-white/5 mx-1" />
+                              
+                              <div className="relative group">
+                                <button className="flex items-center gap-1.5 p-1 px-3 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
+                                   Move_To <ChevronDown className="w-3 h-3" />
+                                </button>
+                                
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[300] p-2 space-y-1 pointer-events-none group-hover:pointer-events-auto">
+                                   <span className="text-[7px] font-black text-slate-600 px-2 py-1 block uppercase tracking-tighter">Target Destination:</span>
+                                   {databases.filter(db => db.id !== activeDbId).map(db => (
+                                     <button 
+                                       key={db.id}
+                                       onClick={(e) => { e.stopPropagation(); handleBulkMoveVault(db.id); }}
+                                       className="w-full text-left p-2 rounded-xl text-[9px] font-black text-slate-400 hover:bg-white/5 hover:text-white transition-all uppercase"
+                                     >
+                                       Transfer_To: {db.name}
+                                     </button>
+                                   ))}
+                                   {databases.length <= 1 && <span className="p-2 text-[8px] text-slate-600 block text-center uppercase">No Other Crates</span>}
+                                </div>
+                              </div>
+
+                              <div className="w-[1px] h-3 bg-white/5 mx-1" />
+                              <button onClick={(e) => { e.stopPropagation(); triggerExport(savedLeads.filter(l => selectedVaultIds.has(String(l.id))), 'Vault_Selected'); }} className="p-1 px-3 hover:bg-white/5 rounded-lg text-[9px] font-black text-indigo-400 uppercase">Export</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="p-1 px-3 hover:bg-rose-500/10 rounded-lg text-[9px] font-black text-rose-500 uppercase">Delete</button>
+                           </div>
+                         )}
+                         
+                         {savedLeads.length > 0 && (
                            <button 
-                             onClick={(e) => { e.stopPropagation(); selectAllVault(); }} 
-                             className="p-1 px-2 hover:bg-white/5 rounded text-[9px] font-black text-slate-400 uppercase"
+                             onClick={selectAllVault}
+                             className="p-1.5 text-slate-500 hover:text-indigo-400 transition-all font-black text-[10px]"
+                             title={selectedVaultIds.size === savedLeads.length ? "Deselect All" : "Select All"}
                            >
-                             {selectedVaultIds.size === savedLeads.length ? 'None' : 'All'}
+                             {selectedVaultIds.size === savedLeads.length ? <CheckSquare className="w-3.5 h-3.5 text-indigo-500" /> : <Square className="w-3.5 h-3.5" />}
                            </button>
-                           <div className="w-[1px] h-3 bg-white/5 mx-1" />
-                           <button onClick={(e) => { e.stopPropagation(); triggerExport(savedLeads.filter(l => selectedVaultIds.has(String(l.id))), 'Vault_Selected'); }} className="p-1 px-2 hover:bg-indigo-500/20 rounded text-[9px] font-black text-indigo-400 uppercase">Export</button>
-                           <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="p-1 px-2 hover:bg-rose-500/20 rounded text-[9px] font-black text-rose-500 uppercase">Delete</button>
-                        </div>
-                      )}
-                      
-                      {savedLeads.length > 0 && (
-                        <button 
-                          onClick={selectAllVault}
-                          className="p-1.5 text-slate-500 hover:text-indigo-400 transition-all"
-                          title={selectedVaultIds.size === savedLeads.length ? "Deselect All" : "Select All"}
-                        >
-                          {selectedVaultIds.size === savedLeads.length ? <CheckSquare className="w-3.5 h-3.5 text-indigo-500" /> : <Square className="w-3.5 h-3.5" />}
-                        </button>
-                      )}
-                      
-                      <button onClick={() => triggerExport(savedLeads, 'Vault_Dump')} disabled={savedLeads.length === 0} className="p-1.5 text-slate-500 hover:text-white transition-all disabled:opacity-0"><Download className="w-3.5 h-3.5" /></button>
-                      
-                      <div className="w-[1px] h-4 bg-white/10 mx-2" />
-                      
-                      <button 
-                        onClick={() => setIsVaultExpanded(!isVaultExpanded)}
-                        className={`p-1.5 rounded-lg transition-all ${isVaultExpanded ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                        title={isVaultExpanded ? "Close Panel (ESC)" : "Expand Intelligence Panel"}
-                      >
-                        {isVaultExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                      </button>
+                         )}
+                         
+                         <button onClick={() => triggerExport(savedLeads, 'Vault_Dump')} disabled={savedLeads.length === 0} className="p-1.5 text-slate-500 hover:text-white transition-all disabled:opacity-0"><Download className="w-3.5 h-3.5" /></button>
+                         
+                         <div className="w-[1px] h-4 bg-white/10 mx-2" />
+                         
+                         <button 
+                           onClick={() => setIsVaultExpanded(!isVaultExpanded)}
+                           className={`p-1.5 rounded-lg transition-all ${isVaultExpanded ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                           title={isVaultExpanded ? "Close Panel (ESC)" : "Expand Intelligence Panel"}
+                         >
+                           {isVaultExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                         </button>
+                      </div>
                    </div>
+
+                   {/* Dashboard Filter Bar - Mission Control Redesign */}
+                   {isVaultExpanded && (
+                     <div className="pb-6 animate-in fade-in slide-in-from-top-4 duration-700 ease-out">
+                        <div className="bg-slate-950/40 backdrop-blur-3xl p-5 rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col gap-5">
+                           
+                           {/* Row 1: Primary Search & Global Actions */}
+                           <div className="flex flex-wrap items-center gap-4">
+                              <div className="relative group/search flex-1 min-w-[320px]">
+                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Search className="w-4 h-4 text-emerald-500/50 group-focus-within/search:text-emerald-400 group-focus-within/search:scale-110 transition-all duration-300" />
+                                 </div>
+                                 <input 
+                                    type="text"
+                                    value={vaultSearch}
+                                    onChange={(e) => setVaultSearch(e.target.value)}
+                                    placeholder="Execute Deep Search: Name, Socials, Niche..."
+                                    className="w-full bg-black/40 border border-white/5 group-hover/search:border-white/10 focus:border-emerald-500/30 rounded-2xl pl-11 pr-4 py-3 text-[11px] font-black text-white focus:outline-none focus:ring-4 focus:ring-emerald-500/5 transition-all uppercase tracking-[0.15em] placeholder:text-slate-600 shadow-inner"
+                                 />
+                                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                                    <span className="text-[7px] font-black text-slate-700 bg-white/5 px-2 py-1 rounded-md uppercase tracking-widest border border-white/5">Search_Query</span>
+                                 </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                 <button 
+                                    onClick={() => {
+                                       setVaultSearch('');
+                                       setVaultCategory('ALL');
+                                       setVaultCountry('ALL');
+                                       setVaultCity('ALL');
+                                       setVaultMinRating(0);
+                                       setVaultSocialFilter('ALL');
+                                       setVaultSort('NEWEST');
+                                    }}
+                                    className="h-12 px-6 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-rose-500 text-[10px] font-black uppercase hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all tracking-widest shadow-lg shadow-rose-950/20 flex items-center gap-2 group/flush"
+                                 >
+                                    <X className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+                                    Flush_Filters
+                                 </button>
+                              </div>
+                           </div>
+
+                           {/* Row 2: Precision Filters & Sorting */}
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                              
+                              {/* Filter Unit: Sector */}
+                              <div className="flex flex-col gap-2">
+                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
+                                    <Filter className="w-3 h-3 text-indigo-400" /> 1. Sector_Niche
+                                 </label>
+                                 <CommandSelect 
+                                    value={vaultCategory}
+                                    onChange={setVaultCategory}
+                                    options={vaultCategories.map(cat => ({ value: cat, label: String(cat === 'ALL' ? 'ALL_SECTORS' : (cat || '')) }))}
+                                    placeholder="ALL_SECTORS"
+                                    className="w-full"
+                                  />
+                              </div>
+
+                              {/* Filter Unit: Region */}
+                              <div className="flex flex-col gap-2">
+                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
+                                    <Globe className="w-3 h-3 text-emerald-400" /> 2. Region_Scope
+                                 </label>
+                                 <CommandSelect 
+                                    value={vaultCountry}
+                                    onChange={(val) => { setVaultCountry(val); setVaultCity('ALL'); }}
+                                    options={vaultCountries.map(c => ({ value: c, label: String(c === 'ALL' ? 'GLOBAL_REACH' : c) }))}
+                                    placeholder="GLOBAL_REACH"
+                                    className="w-full"
+                                 />
+                              </div>
+
+                              {/* Filter Unit: Metro */}
+                              <div className="flex flex-col gap-2">
+                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
+                                    <Globe className="w-3 h-3 text-sky-400 opacity-50" /> 3. Local_Hub
+                                 </label>
+                                 <CommandSelect 
+                                    value={vaultCity}
+                                    onChange={setVaultCity}
+                                    options={vaultCities.map(c => ({ value: c, label: String(c === 'ALL' ? 'SELECT_METRO' : c) }))}
+                                    placeholder="SELECT_METRO"
+                                    className="w-full"
+                                 />
+                              </div>
+
+                              {/* Filter Unit: Signal */}
+                              <div className="flex flex-col gap-2">
+                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
+                                    <Star className="w-3 h-3 text-amber-400" /> 4. Trust_Signal
+                                 </label>
+                                 <CommandSelect 
+                                    value={vaultMinRating}
+                                    onChange={(val) => setVaultMinRating(Number(val))}
+                                    options={[
+                                       { value: 0, label: 'ALLOW_ALL' },
+                                       { value: 4, label: 'TIER_1 (4.0+)' },
+                                       { value: 4.5, label: 'ELITE (4.5+)' }
+                                    ]}
+                                    placeholder="ALLOW_ALL"
+                                    className="w-full"
+                                 />
+                              </div>
+
+                              {/* Filter Unit: Matrix */}
+                              <div className="flex flex-col gap-2">
+                                 <label className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">
+                                    <Share2 className="w-3 h-3 text-pink-400" /> 5. Presence_Matrix
+                                 </label>
+                                 <CommandSelect 
+                                    value={vaultSocialFilter}
+                                    onChange={setVaultSocialFilter}
+                                    options={[
+                                       { value: 'ALL', label: 'IGNOR_SOCIAL' },
+                                       { value: 'WITH', label: 'HAS_SOCIALS' },
+                                       { value: 'WITHOUT', label: 'NO_SOCIALS' }
+                                    ]}
+                                    placeholder="IGNOR_SOCIAL"
+                                    className="w-full"
+                                 />
+                              </div>
+
+                              {/* Filter Unit: Order */}
+                              <div className="flex flex-col gap-2">
+                                 <label className="flex items-center gap-2 text-[8px] font-black text-indigo-500/50 uppercase tracking-[0.2em] ml-2">
+                                    <Zap className="w-3 h-3" /> 6. Sort_Schema
+                                 </label>
+                                 <CommandSelect 
+                                    value={vaultSort}
+                                    onChange={setVaultSort}
+                                    options={[
+                                       { value: 'NEWEST', label: 'TIME_RECENCY' },
+                                       { value: 'RATING', label: 'TOP_SIGNAL' },
+                                       { value: 'NAME', label: 'ID_ALPHABET' }
+                                    ]}
+                                    placeholder="TIME_RECENCY"
+                                    className="w-full"
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                   )}
                 </div>
 
                 {/* Vault Content */}
@@ -947,6 +1323,79 @@ export default function Home() {
                 </div>
              </div>
           </section>
+           {/* DB Manager Popup */}
+           <AnimatePresence>
+             {dbManagerOpen && (
+               <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={() => setDbManagerOpen(false)}
+                    className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                  />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="relative bg-slate-900 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6"
+                  >
+                     <div className="flex items-center justify-between mb-8">
+                        <div>
+                           <h3 className="text-sm font-black text-white uppercase tracking-widest">Archive_Manager</h3>
+                           <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Manage Intelligence Crates</p>
+                        </div>
+                        <button onClick={() => setDbManagerOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-all">
+                           <X className="w-5 h-5 text-slate-500" />
+                        </button>
+                     </div>
+
+                     <div className="space-y-3 mb-8">
+                        {databases.map(db => (
+                          <div key={db.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${activeDbId === db.id ? 'bg-indigo-500/10 border-indigo-500/40 shadow-lg shadow-indigo-500/5' : 'bg-black/20 border-white/5 hover:bg-white/5'}`}>
+                             <div className="flex items-center gap-4">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${activeDbId === db.id ? 'bg-indigo-500 text-white shadow-xl' : 'bg-white/5 text-slate-500'}`}>
+                                   <Database className="w-4 h-4" />
+                                </div>
+                                <span className={`text-[11px] font-black uppercase tracking-wider ${activeDbId === db.id ? 'text-white' : 'text-slate-400'}`}>{db.name}</span>
+                             </div>
+                             <div className="flex items-center gap-4">
+                                {activeDbId !== db.id ? (
+                                   <button 
+                                      onClick={() => { setActiveDbId(db.id); fetchSavedLeads(db.id); setDbManagerOpen(false); }}
+                                      className="text-[9px] font-black text-indigo-400 hover:text-white uppercase tracking-widest transition-all"
+                                   >
+                                      Switch_To
+                                   </button>
+                                ) : (
+                                   <span className="text-[7px] font-black text-indigo-500 uppercase tracking-widest px-2 py-1 bg-indigo-500/10 rounded-lg">Operational</span>
+                                )}
+                                {db.id !== 1 && (
+                                   <button onClick={() => deleteDatabase(db.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-all">
+                                      <Trash className="w-3.5 h-3.5" />
+                                   </button>
+                                )}
+                             </div>
+                          </div>
+                        ))}
+                     </div>
+
+                     <div className="p-1 bg-white/[0.02] border border-white/5 rounded-2xl">
+                        <input 
+                           type="text"
+                           placeholder="New Crate Identity..."
+                           className="w-full bg-transparent border-none px-4 py-3 text-[10px] font-black text-white focus:outline-none uppercase tracking-widest"
+                           onKeyDown={(e) => {
+                             if (e.key === 'Enter') {
+                               createDatabase((e.target as HTMLInputElement).value);
+                               (e.target as HTMLInputElement).value = '';
+                             }
+                           }}
+                        />
+                     </div>
+                     <p className="text-center text-[8px] text-slate-600 mt-4 uppercase font-black">Press [ENTER] to forge new crate</p>
+                  </motion.div>
+               </div>
+             )}
+           </AnimatePresence>
         </main>
       </div>
       {/* Export Selection Modal */}
@@ -966,7 +1415,7 @@ export default function Home() {
             </div>
             
             <div className="p-6">
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4 flex items-center justify-between">
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <span>Select Dimensions To Extract</span>
                   <button 
@@ -983,7 +1432,7 @@ export default function Home() {
                   </button>
                 </div>
                 <span className="text-indigo-400">{exportFields.length} / {AVAILABLE_FIELDS.length}</span>
-              </p>
+              </div>
               
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_FIELDS.map((field) => {

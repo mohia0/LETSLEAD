@@ -3,6 +3,34 @@ export const INDUSTRIES = [
 ];
 
 export const GEOGRAPHY: { [country: string]: string[] } = {
+  // GCC
+  "United Arab Emirates": [
+    "Dubai", "Abu Dhabi", "Sharjah", "Al Ain", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"
+  ],
+  "Saudi Arabia": [
+    "Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Hofuf", "Taif", "Tabuk", "Buraydah", "Qatif", "Abha"
+  ],
+  "Kuwait": ["Kuwait City", "Jahra", "Al Ahmadi", "Hawalli", "Mubarak Al-Kabeer"],
+  "Qatar": ["Doha", "Al Rayyan", "Al Wakrah", "Al Khor", "Lusail"],
+  "Bahrain": ["Manama", "Riffa", "Muharraq", "Hamad Town", "Isa Town"],
+  "Oman": ["Muscat", "Salalah", "Seeb", "Bawshar", "Sohar", "Suwayq"],
+  
+  // Arabic (Non-GCC)
+  "Egypt": [
+    "Cairo", "Alexandria", "Giza", "Shubra El Kheima", "Port Said", "Suez", "Luxor", "Mansoura", "Tanta", "Asyut", "Ismailia", "Fayyum"
+  ],
+  "Jordan": ["Amman", "Zarqa", "Irbid", "Aqaba", "Salt", "Madaba"],
+  "Lebanon": ["Beirut", "Tripoli", "Sidon", "Tyre", "Byblos", "Jounieh"],
+  "Morocco": ["Casablanca", "Rabat", "Marrakesh", "Fes", "Tangier", "Agadir"],
+  "Tunisia": ["Tunis", "Sfax", "Sousse", "Kairouan", "Bizerte", "Gabes"],
+  "Algeria": ["Algiers", "Oran", "Constantine", "Annaba", "Blida", "Batna"],
+  "Iraq": ["Baghdad", "Basra", "Mosul", "Erbil", "Kirkuk", "Najaf"],
+  "Palestine": ["Gaza City", "Ramallah", "Hebron", "Nablus", "Jericho", "Jenin"],
+  "Libya": ["Tripoli", "Benghazi", "Misrata", "Bayda", "Zawiya", "Tobruk"],
+  "Syria": ["Damascus", "Aleppo", "Homs", "Latakia", "Hama", "Tartus"],
+  "Sudan": ["Khartoum", "Omdurman", "Port Sudan", "Kassala", "El Obeid"],
+
+  // International
   "United States": [
     "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "San Francisco", "Charlotte", "Indianapolis", "Seattle", "Denver", "Washington D.C.", "Boston", "El Paso", "Nashville", "Detroit", "Oklahoma City", "Portland", "Las Vegas", "Memphis"
   ],
@@ -45,12 +73,6 @@ export const GEOGRAPHY: { [country: string]: string[] } = {
   "Netherlands": [
     "Amsterdam", "Rotterdam", "The Hague", "Utrecht", "Eindhoven", "Tilburg", "Groningen", "Almere", "Breda", "Nijmegen", "Enschede"
   ],
-  "United Arab Emirates": [
-    "Dubai", "Abu Dhabi", "Sharjah", "Al Ain", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"
-  ],
-  "Saudi Arabia": [
-    "Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Hofuf", "Taif", "Tabuk", "Buraydah", "Qatif", "Abha"
-  ],
   "Singapore": ["Singapore"],
   "New Zealand": [
     "Auckland", "Wellington", "Christchurch", "Hamilton", "Tauranga", "Napier-Hastings", "Dunedin", "Palmerston North"
@@ -63,10 +85,15 @@ export const GEOGRAPHY: { [country: string]: string[] } = {
   ],
   "Norway": [
     "Oslo", "Bergen", "Stavanger", "Trondheim", "Fredrikstad", "Drammen", "Porsgrunn", "Kristiansand", "Tromso"
-  ],
-  "Egypt": [
-    "Cairo", "Alexandria", "Giza", "Shubra El Kheima", "Port Said", "Suez", "Luxor", "Mansoura", "Tanta", "Asyut", "Ismailia", "Fayyum"
   ]
 };
 
-export const COUNTRIES = Object.keys(GEOGRAPHY).sort();
+const GCC_LIST = ["United Arab Emirates", "Saudi Arabia", "Kuwait", "Qatar", "Bahrain", "Oman"];
+const ARABIC_LIST = [
+  "Egypt", "Jordan", "Lebanon", "Morocco", "Tunisia", "Algeria", "Iraq", 
+  "Palestine", "Libya", "Syria", "Sudan"
+];
+
+const INTERNATIONAL_LIST = Object.keys(GEOGRAPHY).filter(c => !GCC_LIST.includes(c) && !ARABIC_LIST.includes(c)).sort();
+
+export const COUNTRIES = [...GCC_LIST, ...ARABIC_LIST, ...INTERNATIONAL_LIST];
