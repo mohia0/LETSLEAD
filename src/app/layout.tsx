@@ -35,6 +35,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${outfit.variable} ${mono.variable} font-sans antialiased`}
+        suppressHydrationWarning
       >
         {children}
       </body>

@@ -21,7 +21,7 @@ db.exec(`
     category TEXT,
     socials TEXT,
     rating REAL,
-    reviews INTEGER,
+    image TEXT,
     savedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(businessName, city, country)
   );
@@ -33,6 +33,7 @@ const columnsToAdd = [
   { name: 'socials', type: 'TEXT' },
   { name: 'rating', type: 'REAL' },
   { name: 'reviews', type: 'INTEGER' },
+  { name: 'image', type: 'TEXT' },
   { name: 'savedAt', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
 ];
 

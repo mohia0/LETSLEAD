@@ -34,6 +34,7 @@ interface Lead {
   socials?: string;
   rating?: number;
   reviews?: number;
+  image?: string;
   savedAt?: string;
 }
 
@@ -55,6 +56,7 @@ export default function Home() {
   const [isVaultExpanded, setIsVaultExpanded] = useState(false);
   const [vaultSearch, setVaultSearch] = useState('');
   const [vaultCategory, setVaultCategory] = useState('ALL');
+  const [autoSave, setAutoSave] = useState(false);
 
   // Export Modal State
   const [exportModal, setExportModal] = useState<{ isOpen: boolean, data: Lead[], filename: string }>({
@@ -77,7 +79,8 @@ export default function Home() {
     { id: 'address', label: 'Address' },
     { id: 'city', label: 'City' },
     { id: 'country', label: 'Country' },
-    { id: 'socials', label: 'Social Media' }
+    { id: 'socials', label: 'Social Media' },
+    { id: 'image', label: 'Profile Picture' }
   ];
 
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -154,6 +157,46 @@ export default function Home() {
     } catch (e) {}
   };
 
+  const getFlagIcon = (countryName: string) => {
+    if (!countryName || countryName === 'GL' || countryName === 'GLOBAL') return <span>🌐</span>;
+    
+    const countryToIso: { [key: string]: string } = {
+      "United States": "us",
+      "United Kingdom": "gb",
+      "Canada": "ca",
+      "Australia": "au",
+      "Germany": "de",
+      "France": "fr",
+      "Italy": "it",
+      "Spain": "es",
+      "Japan": "jp",
+      "India": "in",
+      "Brazil": "br",
+      "Mexico": "mx",
+      "South Africa": "za",
+      "Netherlands": "nl",
+      "United Arab Emirates": "ae",
+      "Saudi Arabia": "sa",
+      "Singapore": "sg",
+      "New Zealand": "nz",
+      "Ireland": "ie",
+      "Sweden": "se",
+      "Norway": "no",
+      "Egypt": "eg"
+    };
+
+    const code = countryToIso[countryName] || countryName.toLowerCase();
+    if (code.length > 2) return <span className="text-[10px]">📍</span>;
+
+    return (
+      <img 
+        src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`} 
+        alt={countryName}
+        className="w-3.5 h-2.5 object-cover rounded-[1px] shadow-[0_0_2px_rgba(0,0,0,0.5)]"
+      />
+    );
+  };
+
   const getSocialIcon = (url: string) => {
     const l = url.toLowerCase();
     if (l.includes('facebook.com')) return <Facebook className="w-4 h-4" />;
@@ -219,88 +262,133 @@ export default function Home() {
         <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-300 ${isSelected ? 'bg-indigo-500' : 'bg-transparent'}`} />
         
         {/* Header Area */}
-        <div className="flex justify-between items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 group/name" onClick={(e) => performCopy(e, lead.businessName)}>
-              <h3 className="text-[12px] font-black text-white truncate group-hover/name:text-indigo-400 transition-colors tracking-tight">
-                {lead.businessName}
-              </h3>
-              <div className="opacity-0 group-hover/name:opacity-100 transition-opacity">
-                <Square className="w-3 h-3 text-slate-500" />
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">
-                {lead.category || 'Classified'}
-              </span>
-              {/* Rating Component */}
-              {typeof lead.rating === 'number' && lead.rating > 0 && (
-                <div 
-                  onClick={(e) => performCopy(e, `${lead.rating} Stars / ${lead.reviews} Reviews`)}
-                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[8px] font-black cursor-copy shadow-sm"
-                >
-                  <Star className="w-2 h-2 fill-current" /> {lead.rating}
-                  {lead.reviews && <span className="text-slate-500 font-mono ml-0.5">({lead.reviews})</span>}
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex gap-3 min-w-0">
+             {/* Dynamic Thumbnail */}
+             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-white/5 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                {lead.image ? (
+                   <img 
+                      src={lead.image} 
+                      alt={lead.businessName} 
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      onError={(e) => {
+                         const target = e.target as HTMLImageElement;
+                         target.style.display = 'none';
+                         target.parentElement!.innerHTML = '<div class="text-indigo-500/40 text-[10px] font-black italic">LINK</div>';
+                      }}
+                   />
+                ) : (
+                   <Database className="w-5 h-5 text-indigo-500/40" />
+                )}
+             </div>
+
+             <div className="min-w-0">
+                <div className="flex items-center gap-2 group/name" onClick={(e) => performCopy(e, lead.businessName)}>
+                  <h3 className="text-[12px] font-black text-white truncate group-hover/name:text-indigo-400 transition-colors tracking-tight">
+                    {lead.businessName}
+                  </h3>
                 </div>
-              )}
-            </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[120px]">
+                    {lead.category || 'Classified_Lead'}
+                  </span>
+                </div>
+             </div>
           </div>
           
-          <div 
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
-            className={`selection-trigger w-4.5 h-4.5 rounded-lg border flex items-center justify-center transition-all hover:scale-110 active:scale-90 shrink-0 ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 hover:border-indigo-500/50'}`}
-          >
-             {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
+          <div className="flex items-center gap-1 shrink-0">
+             {!isVault && (
+               <button 
+                 onClick={async (e) => {
+                   e.stopPropagation();
+                   try {
+                     const res = await fetch('/api/save', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify(lead)
+                     });
+                     if (res.ok) {
+                       fetchSavedLeads();
+                       setCopyFeedback({ x: e.clientX, y: e.clientY });
+                       // We can even remove it from session if we want, but letting it stay is fine.
+                     }
+                   } catch (e) {}
+                 }}
+                 className="p-1 px-2 flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-600 border border-emerald-500/20 text-emerald-500 hover:text-white rounded-lg transition-all text-[8px] font-black uppercase tracking-tighter"
+                 title="Quick Save to Vault"
+               >
+                 <Database className="w-2.5 h-2.5" /> SAVE
+               </button>
+             )}
+             <div 
+               onClick={(e) => { e.stopPropagation(); onToggle(); }}
+               className={`selection-trigger w-5 h-5 rounded-lg border flex items-center justify-center transition-all hover:scale-110 active:scale-90 ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 hover:border-indigo-500/50'}`}
+             >
+                {isSelected && <CheckSquare className="w-3.5 h-3.5 text-white" />}
+             </div>
           </div>
         </div>
 
-        {/* Unified Contact Grid - More Compact */}
-        <div className="grid grid-cols-1 gap-1.5 mt-3">
-          <div className="flex items-center gap-1.5">
+        {/* 4-Quadrant Intelligence Grid */}
+        <div className="grid grid-cols-2 gap-1.5 mt-4">
+            {/* Phone Field */}
             <div 
               onClick={(e) => performCopy(e, lead.phone)}
-              className={`flex-1 flex items-center justify-between p-1.5 rounded-lg bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.phone ? 'border-emerald-500/20 text-emerald-400' : 'border-white/5 opacity-20'}`}
+              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.phone ? 'border-emerald-500/20 text-emerald-400' : 'border-white/5 opacity-20'}`}
             >
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <Phone className="w-3 h-3 opacity-50 shrink-0" />
                 <span className="text-[9px] font-black font-mono truncate tracking-tighter">{lead.phone || 'NO_PHON'}</span>
               </div>
-              {lead.phone && <Download className="w-2.5 h-2.5 opacity-0 group-hover/field:opacity-30 rotate-180 transition-opacity" />}
             </div>
             
+            {/* Email Field */}
             <div 
               onClick={(e) => performCopy(e, lead.email)}
-              className={`flex-1 flex items-center justify-between p-1.5 rounded-lg bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.email ? 'border-indigo-500/20 text-indigo-400' : 'border-white/5 opacity-20'}`}
+              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.email ? 'border-indigo-500/20 text-indigo-400' : 'border-white/5 opacity-20'}`}
             >
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <Mail className="w-3 h-3 opacity-50 shrink-0" />
                 <span className="text-[9px] font-black font-mono truncate tracking-tighter">{lead.email.split(',')[0] || 'NO_MAIL'}</span>
               </div>
-              {lead.email && <Download className="w-2.5 h-2.5 opacity-0 group-hover/field:opacity-30 rotate-180 transition-opacity" />}
             </div>
-          </div>
 
-          <div 
-            onClick={(e) => { if (!lead.website) return; performCopy(e, lead.website); }}
-            className={`flex items-center justify-between p-1.5 rounded-lg bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.website ? 'border-sky-500/20 text-sky-400' : 'border-white/5 opacity-20'}`}
-          >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Globe className="w-3 h-3 opacity-50 shrink-0" />
-              {lead.website ? (
-                <a 
-                  href={lead.website} 
-                  target="_blank" 
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-[9px] font-black font-mono truncate tracking-tighter hover:underline hover:text-sky-300 transition-colors"
-                >
-                  {lead.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                </a>
-              ) : (
-                <span className="text-[9px] font-black font-mono truncate tracking-tighter">NO_SITE</span>
-              )}
+            {/* Website Field */}
+            <div 
+              onClick={(e) => { if (!lead.website) return; performCopy(e, lead.website); }}
+              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.website ? 'border-sky-500/20 text-sky-400' : 'border-white/5 opacity-20'}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Globe className="w-3 h-3 opacity-50 shrink-0" />
+                {lead.website ? (
+                  <a 
+                    href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()} 
+                    className="text-[9px] font-black font-mono truncate tracking-tighter hover:underline text-sky-400/90"
+                  >
+                    {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                  </a>
+                ) : (
+                  <span className="text-[9px] font-black font-mono truncate tracking-tighter">NO_SITE</span>
+                )}
+              </div>
             </div>
-            {lead.website && <Download className="w-2.5 h-2.5 opacity-0 group-hover/field:opacity-30 rotate-180 transition-opacity" />}
-          </div>
+
+            {/* Rating Field (Integrated) */}
+            <div 
+              onClick={(e) => performCopy(e, `${lead.rating} Stars / ${lead.reviews} Reviews`)}
+              className={`flex items-center justify-between p-2 rounded-xl bg-black/40 border transition-all hover:bg-black/60 group/field ${lead.rating ? 'border-amber-500/20 text-amber-500' : 'border-white/5 opacity-20'}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Star className={`w-3 h-3 shrink-0 ${lead.rating ? 'fill-current' : 'opacity-50'}`} />
+                <span className="text-[9px] font-black font-mono truncate tracking-tighter">
+                   {lead.rating ? `${lead.rating} / ${lead.reviews || 0}` : 'NO_RATE'}
+                </span>
+              </div>
+            </div>
         </div>
 
         {/* Footer: Socials & Location - Tighter */}
@@ -316,30 +404,32 @@ export default function Home() {
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="w-7 h-7 rounded-full bg-slate-900 border-2 border-[#020617] flex items-center justify-center text-slate-500 hover:text-indigo-400 transition-all hover:scale-110 shadow-lg" 
-                    title={url}
                   >
-                    <div className="scale-[0.85]">{getSocialIcon(url)}</div>
+                    <div className="scale-[0.8]"> {getSocialIcon(url)} </div>
                   </a>
                 ))}
                 {socialsArray.length > 5 && (
-                  <div className="w-7 h-7 rounded-full bg-slate-900 border-2 border-[#020617] flex items-center justify-center text-[8px] font-black text-slate-600 shadow-lg">
+                  <div className="w-7 h-7 rounded-full bg-slate-900 border-2 border-[#020617] flex items-center justify-center text-[7px] font-black text-slate-600 shadow-lg">
                     +{socialsArray.length - 5}
                   </div>
                 )}
               </div>
             ) : (
-              <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest opacity-30">NO_FOOTPRINT</span>
+              <span className="text-[7px] font-black text-slate-700 uppercase tracking-widest opacity-30">NO_FOOTPRINT</span>
             )}
           </div>
           
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
              <div 
                onClick={(e) => performCopy(e, lead.address)}
-               className="text-[8px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full border border-white/5 hover:border-white/20 transition-colors"
+               className="text-[7px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-2.5 py-1 rounded-full border border-white/5 hover:border-white/20 transition-colors flex items-center gap-2"
              >
-                {lead.city}
+                <div className="flex-shrink-0 flex items-center" title={lead.country}>
+                  {getFlagIcon(lead.country)}
+                </div>
+                <span className="truncate">{lead.city || 'GLOBAL'}</span>
              </div>
-             {isVault && <span className="text-[8px] font-black text-slate-700 uppercase">{new Date(lead.savedAt || '').toLocaleDateString('en-GB')}</span>}
+             {isVault && <span className="text-[7px] font-black text-slate-700 uppercase">{new Date(lead.savedAt || '').toLocaleDateString('en-GB')}</span>}
           </div>
         </div>
       </div>
@@ -415,7 +505,16 @@ export default function Home() {
         if (data.type === 'LOG') {
           setLogs((prev) => [...prev, data]);
         } else if (data.type === 'LEAD') {
-          setSessionLeads((prev) => [{ ...data.payload, id: Math.random().toString(36).substr(2, 9) }, ...prev]);
+          const newLead = data.payload as Lead;
+          setSessionLeads((prev) => [newLead, ...prev]);
+          
+          if (autoSave) {
+            fetch('/api/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newLead)
+            }).then(() => fetchSavedLeads()).catch(() => {});
+          }
         } else if (data.type === 'END' || data.type === 'ERROR') {
           setLogs((prev) => [...prev, data]);
           setIsScraping(false);
@@ -452,8 +551,21 @@ export default function Home() {
   };
 
   const performExport = () => {
-    const { data, filename } = exportModal;
-    if (data.length === 0) return;
+    const { data: rawData, filename } = exportModal;
+    if (rawData.length === 0) return;
+
+    // Smart Filter: Only include leads that have at least one of the selected fields populated
+    const data = rawData.filter(lead => 
+      exportFields.some(fieldId => {
+        const val = (lead as any)[fieldId];
+        return val && String(val).trim().length > 0;
+      })
+    );
+
+    if (data.length === 0) {
+      alert("No leads found with the selected intelligence dimensions.");
+      return;
+    }
 
     // Get selected labels for header
     const selectedHeaders = AVAILABLE_FIELDS
@@ -462,12 +574,22 @@ export default function Home() {
 
     const rows = data.map(l => 
       exportFields.map(fieldId => {
-        const val = (l as any)[fieldId];
-        return `"${val ? String(val).replace(/"/g, '""') : ''}"`;
+        let val = (l as any)[fieldId];
+        if (!val) return '""';
+        
+        const cleanVal = String(val).replace(/"/g, '""');
+        
+        // Fix for Excel: Force string format for phone numbers to preserve leading zeros
+        if (fieldId === 'phone') {
+          return `="\"${cleanVal}\""`;
+        }
+        
+        return `"\"${cleanVal}\""`;
       }).join(',')
     );
 
-    const csvContent = [selectedHeaders.join(','), ...rows].join('\n');
+    // Add 'sep=,' for Excel auto-delimiter detection
+    const csvContent = ['sep=,', selectedHeaders.join(','), ...rows].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -564,6 +686,16 @@ export default function Home() {
                   <input type="range" min="1" max="500" value={targetLeads} onChange={(e) => setTargetLeads(Number(e.target.value))} className="w-full h-1 bg-white/5 rounded-full appearance-none accent-indigo-500 cursor-pointer" />
                 </div>
 
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 group cursor-pointer" onClick={() => setAutoSave(!autoSave)}>
+                   <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-white uppercase tracking-widest">Auto_Sync_Vault</span>
+                      <span className="text-[8px] text-slate-500 font-bold">Auto-adds found leads to DB</span>
+                   </div>
+                   <div className={`w-8 h-4 rounded-full p-0.5 transition-all duration-300 ${autoSave ? 'bg-indigo-600' : 'bg-white/10'}`}>
+                      <div className={`w-3 h-3 rounded-full bg-white transition-all duration-300 ${autoSave ? 'translate-x-4' : 'translate-x-0'}`} />
+                   </div>
+                </div>
+
                 {isScraping ? (
                   <div className="flex gap-2">
                     <button disabled className="flex-1 h-12 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-black rounded-xl text-[10px] uppercase flex items-center justify-center gap-3">
@@ -630,18 +762,36 @@ export default function Home() {
                           <Zap className="w-3 h-3 text-amber-500" /> LIVE_Discovery
                       </h2>
                    </div>
-                    <div className="flex items-center gap-1">
+                   <div className="flex items-center gap-1">
+                      {sessionLeads.length > 0 && (
+                        <>
+                          <button 
+                            onClick={async () => {
+                              const batch = [...sessionLeads];
+                              for (const l of batch) {
+                                await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(l) });
+                              }
+                              fetchSavedLeads();
+                              alert(`${batch.length} leads prioritized for permanent storage.`);
+                            }}
+                            className="p-1 px-2 flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-600 border border-indigo-500/20 text-indigo-500 hover:text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-tighter"
+                            title="Commit Buffer to Vault"
+                          >
+                            <Database className="w-3 h-3" /> Commit
+                          </button>
+                          <button 
+                            onClick={() => { setSessionLeads([]); setSelectedSessionIds(new Set()); }}
+                            className="p-1 px-2 bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 text-rose-500 hover:text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-tighter"
+                            title="Purge Discovery Buffer"
+                          >
+                            Flush
+                          </button>
+                        </>
+                      )}
+                      
                       {selectedSessionIds.size > 0 && (
-                        <div className="flex items-center gap-1 p-0.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); selectAllSession(); }} 
-                             className="p-1 px-2 hover:bg-white/5 rounded text-[9px] font-black text-slate-400 uppercase"
-                           >
-                             {selectedSessionIds.size === sessionLeads.length ? 'None' : 'All'}
-                           </button>
-                           <div className="w-[1px] h-3 bg-white/5 mx-1" />
-                           <button onClick={(e) => { e.stopPropagation(); triggerExport(sessionLeads.filter(l => selectedSessionIds.has(l.id)), 'Buffer_Selected'); }} className="p-1 px-2 hover:bg-indigo-500/20 rounded text-[9px] font-black text-indigo-400 uppercase">Export</button>
-                           <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteSession(); }} className="p-1 px-2 hover:bg-rose-500/20 rounded text-[9px] font-black text-rose-500 uppercase">Delete</button>
+                        <div className="flex items-center gap-1 p-0.5 bg-indigo-500/5 rounded-lg border border-white/5 ml-2">
+                           <button onClick={(e) => { e.stopPropagation(); triggerExport(sessionLeads.filter(l => selectedSessionIds.has(l.id)), 'Buffer_Selected'); }} className="p-1 px-2 hover:bg-emerald-500/20 rounded text-[9px] font-black text-emerald-500 uppercase">Export</button>
                         </div>
                       )}
                       
@@ -817,13 +967,32 @@ export default function Home() {
             
             <div className="p-6">
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4 flex items-center justify-between">
-                <span>Select Dimensions To Extract</span>
+                <div className="flex items-center gap-4">
+                  <span>Select Dimensions To Extract</span>
+                  <button 
+                    onClick={() => {
+                      if (exportFields.length === AVAILABLE_FIELDS.length) {
+                        setExportFields([]);
+                      } else {
+                        setExportFields(AVAILABLE_FIELDS.map(f => f.id));
+                      }
+                    }}
+                    className="text-indigo-400 hover:text-indigo-300 transition-colors lowercase italic"
+                  >
+                    {exportFields.length === AVAILABLE_FIELDS.length ? "[unselect_all]" : "[select_all]"}
+                  </button>
+                </div>
                 <span className="text-indigo-400">{exportFields.length} / {AVAILABLE_FIELDS.length}</span>
               </p>
               
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_FIELDS.map((field) => {
                   const isSelected = exportFields.includes(field.id);
+                  const count = exportModal.data.filter(l => {
+                    const val = (l as any)[field.id];
+                    return val && String(val).trim().length > 0;
+                  }).length;
+
                   return (
                     <button
                       key={field.id}
@@ -832,16 +1001,21 @@ export default function Home() {
                           isSelected ? prev.filter(f => f !== field.id) : [...prev, field.id]
                         );
                       }}
-                      className={`flex items-center gap-2 p-3 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all ${
+                      className={`flex items-center justify-between p-3 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all ${
                         isSelected 
-                          ? 'bg-indigo-500/10 border-indigo-500/40 text-white' 
+                          ? 'bg-indigo-500/10 border-indigo-500/40 text-white shadow-[0_4px_20px_rgba(99,102,241,0.1)]' 
                           : 'bg-white/5 border-white/5 text-slate-600 hover:border-white/20'
                       }`}
                     >
-                      <div className={`w-3.5 h-3.5 rounded flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500' : 'bg-white/10'}`}>
-                        {isSelected && <CheckSquare className="w-2.5 h-2.5" />}
+                      <div className="flex items-center gap-2 truncate">
+                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500' : 'bg-white/10'}`}>
+                          {isSelected && <CheckSquare className="w-2.5 h-2.5" />}
+                        </div>
+                        {field.label}
                       </div>
-                      {field.label}
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-md ${isSelected ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-slate-700'}`}>
+                        {count}
+                      </span>
                     </button>
                   );
                 })}

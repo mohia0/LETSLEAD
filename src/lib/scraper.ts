@@ -205,7 +205,7 @@ export async function runScrapeJob(params: ScrapeParams) {
                             if (href) mapsSocials.push(href);
                         });
 
-                        // CATEGORY & RATING
+                        // DATA EXTRACTION (Category, Rating, Reviews)
                         category = panel.querySelector('button[jsaction*="category"]')?.textContent?.trim() || '';
                         const ratingStr = panel.querySelector('span[role="img"][aria-label*="stars"]')?.getAttribute('aria-label') || '';
                         const rMatch = ratingStr.match(/([0-9.]+)\s*stars/i);
@@ -213,11 +213,18 @@ export async function runScrapeJob(params: ScrapeParams) {
                         const reviewMatch = ratingStr.match(/([0-9,]+)\s*Reviews/i);
                         if (reviewMatch) reviews = parseInt(reviewMatch[1].replace(/,/g, ''), 10);
 
-                        return { phone, website, category, rating, reviews, panelTitle, mapsSocials: [...new Set(mapsSocials)] };
+                        // IMAGE EXTRACTION
+                        let image = '';
+                        const imgEl = panel.querySelector('button[jsaction*="photo"] img, [role="img"] img, .m67q60-image-view img');
+                        if (imgEl) {
+                          image = imgEl.getAttribute('src') || '';
+                          if (image.startsWith('//')) image = 'https:' + image;
+                        }
+
+                        return { phone, website, category, rating, reviews, panelTitle, mapsSocials: [...new Set(mapsSocials)], image };
                     }, businessName);
 
                     if (data) break;
-                    // If still null, the panel is either loading or stale
                 }
 
                 if (!data) {
@@ -227,7 +234,7 @@ export async function runScrapeJob(params: ScrapeParams) {
 
                 if (data.phone) data.phone = data.phone.replace(/[^\d+x\s-]/g, '').trim();
 
-                let { phone, website, category, rating, reviews, mapsSocials } = data;
+                let { phone, website, category, rating, reviews, mapsSocials, image } = data;
                 let emails: string[] = [];
                 let socials: string[] = [...(mapsSocials || [])];
 
@@ -250,17 +257,17 @@ export async function runScrapeJob(params: ScrapeParams) {
                     businessName, website, email: emails.join(', '), phone, address: '', 
                     googleMapsLink: await element.getAttribute('href'), city, country,
                     source: 'Deep Discovery Engine v3', category, socials: socials.join(', '),
-                    rating, reviews
+                    rating, reviews, image
                 };
 
                 try {
                   db.prepare(`
-                      INSERT INTO leads (businessName, website, email, phone, googleMapsLink, city, country, source, category, socials, rating, reviews)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      INSERT INTO leads (businessName, website, email, phone, googleMapsLink, city, country, source, category, socials, rating, reviews, image)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).run(
                     finalLead.businessName, finalLead.website, finalLead.email, finalLead.phone, 
                     finalLead.googleMapsLink, finalLead.city, finalLead.country, finalLead.source,
-                    finalLead.category, finalLead.socials, finalLead.rating, finalLead.reviews
+                    finalLead.category, finalLead.socials, finalLead.rating, finalLead.reviews, finalLead.image
                   );
                   
                   leadsCollected.add(businessName);
