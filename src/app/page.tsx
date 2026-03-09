@@ -164,6 +164,8 @@ export default function Home() {
     data: [],
     filename: 'export'
   });
+  const [exportFormat, setExportFormat] = useState<'xls' | 'csv'>('xls');
+
   const [exportFields, setExportFields] = useState<string[]>([
     'businessName', 'category', 'rating', 'reviews', 'website', 'email', 'phone', 'address', 'city', 'country', 'socials'
   ]);
@@ -613,7 +615,7 @@ export default function Home() {
                 <button className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-600 text-[8px] font-black text-indigo-400 hover:text-white rounded-xl transition-all uppercase tracking-tighter">
                    <Share2 className="w-2.5 h-2.5" /> Move
                 </button>
-                <div className="absolute bottom-full left-0 mb-2 w-40 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/percard:opacity-100 group-hover/percard:visible transition-all z-[500] p-1.5 space-y-1">
+                <div className="absolute top-full left-0 mt-2 w-40 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/percard:opacity-100 group-hover/percard:visible transition-all z-[600] p-1.5 space-y-1">
                    {databases.filter(db => db.id !== activeDbId).map(db => (
                      <button key={db.id} onClick={(e) => { e.stopPropagation(); handleBulkMoveVault(db.id); }} className="w-full text-left p-2 rounded-xl text-[8px] font-black text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all uppercase">To: {db.name}</button>
                    ))}
@@ -839,8 +841,8 @@ export default function Home() {
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <style>
           table { border: 1px solid #E2E8F0; border-collapse: collapse; font-family: sans-serif; }
-          th { background-color: #4F46E5; color: #FFFFFF; font-weight: bold; padding: 12px 8px; border: 1px solid #E2E8F0; text-transform: uppercase; font-size: 11px; text-align: left; }
-          td { border: 1px solid #E2E8F0; padding: 10px 8px; font-size: 10px; color: #334155; }
+          th { background-color: #4F46E5; color: #FFFFFF; font-weight: bold; padding: 12px 8px; border: 1px solid #E2E8F0; text-transform: uppercase; font-size: 11px; text-align: left; white-space: nowrap; }
+          td { border: 1px solid #E2E8F0; padding: 10px 8px; font-size: 10px; color: #334155; white-space: nowrap; }
           .phone-cell { mso-number-format:"\\@"; } /* This forces Excel to treat phones as text */
         </style>
       </head>
@@ -867,12 +869,33 @@ export default function Home() {
       </html>
     `.trim();
 
-    const blob = new Blob([htmlTable], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}_${new Date().getTime()}.xls`;
-    a.click();
+    if (exportFormat === 'xls') {
+      const blob = new Blob([htmlTable], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}_${new Date().getTime()}.xls`;
+      a.click();
+    } else {
+      // CSV Export
+      const headers = selectedFields.map(f => f.label).join(',');
+      const rows = data.map(l => 
+        selectedFields.map(f => {
+          const val = String((l as any)[f.id] || '').replace(/"/g, '""');
+          if (f.id === 'phone' && val) return `="\t${val}"`; // Force text format in Excel
+          return `"${val}"`;
+        }).join(',')
+      ).join('\n');
+      const csvContent = `${headers}\n${rows}`;
+      // Add UTF-8 BOM to fix Arabic/Special characters in Excel
+      const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}_${new Date().getTime()}.csv`;
+      a.click();
+    }
+
     
     setExportModal(prev => ({ ...prev, isOpen: false }));
   };
@@ -1208,13 +1231,13 @@ export default function Home() {
                       <div className="flex items-center gap-1">
                          {/* Bulk Operations Bar - Only when multiple selected */}
                          {selectedVaultIds.size > 1 && (
-                            <div className="flex items-center gap-0.5 p-0.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mr-2 backdrop-blur-md animate-in fade-in zoom-in duration-300">
+                            <div className="flex items-center gap-0.5 p-0.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mr-2 backdrop-blur-md animate-in fade-in zoom-in duration-300 relative z-[50]">
                                <div className="relative group">
                                  <button className="flex items-center gap-1 p-1 px-2.5 bg-indigo-600 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
                                     MOVE <ChevronDown className="w-2.5 h-2.5 opacity-50" />
                                  </button>
                                  
-                                 <div className="absolute top-full right-0 mt-1 w-40 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[300] p-1.5 space-y-0.5 pointer-events-none group-hover:pointer-events-auto">
+                                 <div className="absolute top-full right-0 mt-1 w-40 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[600] p-1.5 space-y-0.5 pointer-events-none group-hover:pointer-events-auto">
                                     {databases.filter(db => db.id !== activeDbId).map(db => (
                                       <button 
                                         key={db.id}
@@ -1511,54 +1534,57 @@ export default function Home() {
                                     </div>
                                   ) : (
                                     <>
-                                       <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setDbToRename(db.id);
-                                            setRenamedValue(db.name);
-                                          }} 
-                                          className="p-2 text-slate-700 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                       >
-                                          <Edit2 className="w-3.5 h-3.5" />
-                                       </button>
-                                       {db.id !== 1 && (
-                                          dbToDelete === db.id ? (
-                                             <div className="flex items-center gap-1.5 animate-in zoom-in duration-300">
-                                                <button 
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     deleteDatabase(db.id);
-                                                     setDbToDelete(null);
-                                                   }} 
-                                                   className="bg-rose-500 hover:bg-rose-600 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg transition-all shadow-lg shadow-rose-900/20"
-                                                >
-                                                   Sure?
-                                                </button>
-                                                <button 
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     setDbToDelete(null);
-                                                   }} 
-                                                   className="p-1 px-2 text-slate-500 hover:text-white text-[8px] font-black uppercase tracking-tighter"
-                                                >
-                                                   Cancel
-                                                </button>
-                                             </div>
-                                          ) : (
-                                             <button 
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setDbToDelete(db.id);
-                                                }} 
-                                                className="p-2 text-slate-700 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                             >
-                                                <Trash className="w-3.5 h-3.5" />
-                                             </button>
-                                          )
-                                       )}
+                                        {db.id !== 1 && (
+                                           <button 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDbToRename(db.id);
+                                                setRenamedValue(db.name);
+                                              }} 
+                                              className="p-2 text-slate-700 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                           >
+                                              <Edit2 className="w-3.5 h-3.5" />
+                                           </button>
+                                        )}
+                                        {db.id !== 1 && (
+                                           dbToDelete === db.id ? (
+                                              <div className="flex items-center gap-1.5 animate-in zoom-in duration-300">
+                                                 <button 
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      deleteDatabase(db.id);
+                                                      setDbToDelete(null);
+                                                    }} 
+                                                    className="bg-rose-500 hover:bg-rose-600 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg transition-all shadow-lg shadow-rose-900/20"
+                                                 >
+                                                    Sure?
+                                                 </button>
+                                                 <button 
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setDbToDelete(null);
+                                                    }} 
+                                                    className="p-1 px-2 text-slate-500 hover:text-white text-[8px] font-black uppercase tracking-tighter"
+                                                 >
+                                                    Cancel
+                                                 </button>
+                                              </div>
+                                           ) : (
+                                              <button 
+                                                 onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setDbToDelete(db.id);
+                                                 }} 
+                                                 className="p-2 text-slate-700 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                              >
+                                                 <Trash className="w-3.5 h-3.5" />
+                                              </button>
+                                           )
+                                        )}
                                     </>
                                   )}
                                </div>
+
                             </div>
                           ))}
                        </div>
@@ -1623,6 +1649,26 @@ export default function Home() {
             </div>
             
             <div className="p-6">
+              <div className="mb-6 pb-6 border-b border-white/5">
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Target Format</div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setExportFormat('xls')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${exportFormat === 'xls' ? 'bg-indigo-500/10 border-indigo-500/40 text-white shadow-[0_4px_20px_rgba(99,102,241,0.1)]' : 'bg-white/5 border-white/5 text-slate-600 hover:border-white/20'}`}
+                  >
+                    <div className={`w-2.5 h-2.5 rounded-full border-2 ${exportFormat === 'xls' ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'border-slate-700'}`} />
+                    Excel Record (.XLS)
+                  </button>
+                  <button 
+                    onClick={() => setExportFormat('csv')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${exportFormat === 'csv' ? 'bg-emerald-500/10 border-emerald-500/40 text-white shadow-[0_4px_20px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/5 text-slate-600 hover:border-white/20'}`}
+                  >
+                    <div className={`w-2.5 h-2.5 rounded-full border-2 ${exportFormat === 'csv' ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'border-slate-700'}`} />
+                    CSV Spreadsheet
+                  </button>
+                </div>
+              </div>
+
               <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <span>Select Dimensions To Extract</span>
