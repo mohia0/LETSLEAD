@@ -78,7 +78,7 @@ function CommandSelect({
     <div className={`relative ${className}`} ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-indigo-500/5 border border-white/5 rounded-xl px-4 py-2.5 text-[10px] font-black text-white hover:bg-white/5 transition-all uppercase tracking-tighter"
+        className="w-full flex items-center justify-between bg-indigo-500/5 border border-white/5 rounded-xl px-4 py-2.5 text-[8px] font-black text-white hover:bg-white/5 transition-all uppercase tracking-tighter"
       >
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
@@ -103,7 +103,7 @@ function CommandSelect({
                       onChange(option.value);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all mb-0.5 last:mb-0 ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all mb-0.5 last:mb-0 ${
                       isSelected 
                         ? 'bg-indigo-500 text-white' 
                         : 'text-slate-400 hover:bg-white/5 hover:text-white'
@@ -1032,7 +1032,7 @@ export default function Home() {
                         key={val}
                         type="button"
                         onClick={() => setTargetLeads(val)}
-                        className={`py-1 rounded-md text-[7.5px] font-black uppercase tracking-tighter transition-all ${targetLeads === val ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-700 hover:text-slate-400'}`}
+                        className={`py-1 rounded-md text-[8px] font-black uppercase tracking-tighter transition-all ${targetLeads === val ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-700 hover:text-slate-400'}`}
                       >
                         {val}
                       </button>
@@ -1218,7 +1218,7 @@ export default function Home() {
              </div>
           </section>
 
-          {/* Column 3: Secured Vault */}
+          {/* Column 3: Saved Database */}
           <section className={`flex flex-col h-full min-h-0 transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5 relative z-[200]'}`}>
              <div className={`glass rounded-3xl flex flex-col flex-1 min-h-0 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5 relative z-[200]'}`}>
                    {/* Vault Header Container */}
@@ -1227,7 +1227,7 @@ export default function Home() {
                    <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-4' : 'py-3'}`}>
                       <div className="flex items-center gap-3">
                           <h2 className={`font-black text-white uppercase tracking-widest flex items-center gap-2 ${isVaultExpanded ? 'text-xs' : 'text-[10px]'}`}>
-                              <Database className={`text-indigo-500 ${isVaultExpanded ? 'w-4 h-4' : 'w-3 h-3'}`} /> Secured_Vault
+                              <Database className={`text-indigo-500 ${isVaultExpanded ? 'w-4 h-4' : 'w-3 h-3'}`} /> Saved_Database
                           </h2>
                           <div className="flex items-center gap-2">
                              <div className="h-4 w-[1px] bg-white/10" />
@@ -1258,8 +1258,8 @@ export default function Home() {
                          {selectedVaultIds.size > 1 && (
                             <div className="flex items-center gap-0.5 p-0.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mr-2 backdrop-blur-md animate-in fade-in zoom-in duration-300 relative z-[50]">
                                <div className="relative group">
-                                 <button className="flex items-center gap-1 p-1 px-2.5 bg-indigo-600 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
-                                    MOVE <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                 <button className="flex items-center gap-1.5 p-1 px-2.5 bg-indigo-600 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
+                                    <Share2 className="w-2.5 h-2.5" /> MOVE <ChevronDown className="w-2.5 h-2.5 opacity-50" />
                                  </button>
                                  
                                  <div className="absolute top-full right-0 mt-1 w-40 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[600] p-1.5 space-y-0.5 pointer-events-none group-hover:pointer-events-auto">
@@ -1274,8 +1274,12 @@ export default function Home() {
                                     ))}
                                  </div>
                                </div>
-                               <button onClick={(e) => { e.stopPropagation(); triggerExport(savedLeads.filter(l => selectedVaultIds.has(String(l.id))), 'Vault_Selected'); }} className="p-1 px-2 hover:bg-white/5 rounded-md text-[8px] font-black text-indigo-400 hover:text-indigo-300 uppercase transition-all">EXPORT</button>
-                               <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="p-1 px-2 hover:bg-rose-500/10 rounded-md text-[8px] font-black text-rose-500 hover:text-rose-400 uppercase transition-all">DELETE</button>
+                               <button onClick={(e) => { e.stopPropagation(); triggerExport(savedLeads.filter(l => selectedVaultIds.has(String(l.id))), 'Vault_Selected'); }} className="flex items-center gap-1.5 p-1 px-2.5 hover:bg-white/5 rounded-md text-[8px] font-black text-indigo-400 hover:text-indigo-300 uppercase transition-all">
+                                 <Download className="w-2.5 h-2.5" /> EXPORT
+                               </button>
+                               <button onClick={(e) => { e.stopPropagation(); handleBulkDeleteVault(); }} className="flex items-center gap-1.5 p-1 px-2.5 hover:bg-rose-500/10 rounded-md text-[8px] font-black text-rose-500 hover:text-rose-400 uppercase transition-all">
+                                 <Trash className="w-2.5 h-2.5" /> DELETE
+                               </button>
                             </div>
                          )}
                          
