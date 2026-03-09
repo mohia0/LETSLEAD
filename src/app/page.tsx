@@ -1160,8 +1160,8 @@ export default function Home() {
           </section>
 
           {/* Column 3: Secured Vault */}
-          <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5'}`}>
-             <div className={`glass rounded-3xl overflow-hidden flex flex-col flex-1 min-h-0 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
+          <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5 relative z-[200]'}`}>
+             <div className={`glass rounded-3xl flex flex-col flex-1 min-h-0 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5 relative z-[200]'}`}>
                    {/* Vault Header Container */}
                 <div className={`px-5 border-b border-white/5 flex flex-col transition-all relative z-[200] ${isVaultExpanded ? 'bg-slate-900/40' : 'bg-white/[0.02]'}`}>
                    {/* Row 1: Identification & Controls */}
@@ -1232,7 +1232,6 @@ export default function Home() {
                             </button>
                          )}
                          
-                         <button onClick={() => triggerExport(savedLeads, 'Vault_Dump')} disabled={savedLeads.length === 0} className="p-1 text-slate-500 hover:text-white transition-all disabled:opacity-0"><Download className="w-3.5 h-3.5" /></button>
                          <div className="w-[1px] h-3 bg-white/10 mx-1.5" />
                          
                          <button 
@@ -1259,7 +1258,7 @@ export default function Home() {
                          initial={{ height: 0, opacity: 0 }}
                          animate={{ height: 'auto', opacity: 1 }}
                          exit={{ height: 0, opacity: 0 }}
-                         className="pb-4 overflow-hidden"
+                         className="pb-4"
                        >
                          <div className="bg-slate-950/40 backdrop-blur-3xl p-3 rounded-3xl border border-white/10 flex flex-col gap-3">
                             
