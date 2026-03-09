@@ -48,10 +48,14 @@ async function deepCrawl(browser: any, website: string, jobId: string): Promise<
           await context.route('**/*.{png,jpg,jpeg,gif,svg,webp,css,woff,woff2,ttf,otf,ico}', route => route.abort());
         }
         
-        const targets = [website];
-        if (!website.endsWith('/')) {
-            targets.push(website + '/contact', website + '/contact-us', website + '/about');
-        }
+        const baseUrl = website.replace(/\/+$/, '');
+        const targets = [
+            website,
+            `${baseUrl}/contact`,
+            `${baseUrl}/contact-us`,
+            `${baseUrl}/about`,
+            `${baseUrl}/about-us`
+        ];
 
         // ⚡ SPEED BOOST 2: Parallel scanning of targets
         await Promise.all(targets.map(async (url) => {
@@ -61,18 +65,33 @@ async function deepCrawl(browser: any, website: string, jobId: string): Promise<
                 await page.goto(url, { timeout: 10000, waitUntil: 'domcontentloaded' });
                 const content = await page.content();
                 
-                const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+                // Enhance Regex: Enforce TLD to have at least 2 alphabet characters
+                const emailRegex = /([a-zA-Z0-9._]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/gi;
                 const matches = content.match(emailRegex);
                 if (matches) {
-                    const filtered = matches.filter(e => !e.toLowerCase().match(/\.(png|jpg|jpeg|gif|svg|webp|pdf|css|js)$/));
+                    const filtered = matches.filter(e => {
+                        const lower = e.toLowerCase();
+                        // Ignore assets and common dev/bot footprints
+                        return !lower.match(/\.(png|jpg|jpeg|gif|svg|webp|pdf|css|js|mp4|woff|ttf|ico)$/) &&
+                               !lower.includes('sentry') && !lower.includes('@example.com') && !lower.includes('email@');
+                    });
                     emails.push(...filtered);
                 }
 
-                const links = await page.evaluate(() => 
-                    Array.from(document.querySelectorAll('a'))
+                // Explicit DOM Traversal (Fallback for obfuscated text that has valid mailto labels)
+                const domData = await page.evaluate(() => {
+                    const mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
+                        .map(a => a.getAttribute('href')?.replace(/^mailto:/i, '').split('?')[0].trim())
+                        .filter(Boolean) as string[];
+
+                    const aTags = Array.from(document.querySelectorAll('a'))
                         .filter(a => a.href)
-                        .map(a => ({ href: a.href, text: a.textContent?.toLowerCase() || '' }))
-                );
+                        .map(a => ({ href: a.href, text: a.textContent?.toLowerCase() || '' }));
+
+                    return { mailtoLinks, aTags };
+                });
+
+                emails.push(...domData.mailtoLinks);
 
                 const socialPatterns = [
                    { key: 'facebook', regex: /facebook\.com/i },
@@ -84,7 +103,7 @@ async function deepCrawl(browser: any, website: string, jobId: string): Promise<
                    { key: 'tiktok', regex: /tiktok\.com/i }
                 ];
                 
-                links.forEach(link => {
+                domData.aTags.forEach(link => {
                    socialPatterns.forEach(pattern => {
                       if (pattern.regex.test(link.href) || link.text.includes(pattern.key)) {
                          socials.push(link.href);
