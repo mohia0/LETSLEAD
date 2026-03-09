@@ -892,7 +892,7 @@ export default function Home() {
     }
   };
 
-  if (!isHydrated) return <div className="min-h-screen bg-[#020617] flex items-center justify-center font-mono text-indigo-500 animate-pulse">BOOTING_DISCOVERY_ENGINE...</div>;
+  if (!isHydrated) return <div className="min-h-screen bg-[#020617] flex items-center justify-center font-mono text-indigo-500 animate-pulse">BOOTING_GET_LEADS_ENGINE...</div>;
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-300 font-sans p-2 selection:bg-indigo-500/30 overflow-x-hidden">
@@ -902,7 +902,7 @@ export default function Home() {
         <header className="flex items-center justify-between px-6 py-2 glass rounded-2xl border border-white/5 mx-2 bg-slate-950/20">
             <h1 className="text-lg font-black text-white tracking-tighter flex items-center gap-2">
               <Zap className="w-4 h-4 text-indigo-500 fill-current" />
-              DEEP<span className="text-indigo-500">DISCOVERY</span>
+              GET<span className="text-indigo-500">LEADS</span>
               <span className="text-[9px] text-slate-500 font-mono opacity-50 px-2 uppercase tracking-[0.3em]">Module_V4.1</span>
             </h1>
             <div className="flex items-center gap-4">
@@ -1017,7 +1017,7 @@ export default function Home() {
                 ) : (
                   <button type="submit" className="w-full h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black rounded-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-500/10 flex items-center justify-center gap-3 group">
                     <Zap className="w-4 h-4 fill-current group-hover:scale-125 transition-transform" />
-                    Initialize_Discovery
+                    Initialize_Get_Leads
                   </button>
                 )}
               </form>
@@ -1541,7 +1541,7 @@ export default function Home() {
                              </AnimatePresence>
                           </div>
                        </div>
-                       <p className="text-center text-[7px] text-slate-700 mt-5 uppercase font-black tracking-[0.2em] opacity-50">Authorized Personnel Only // Deep Discovery Protocol Level 4</p>
+                       <p className="text-center text-[7px] text-slate-700 mt-5 uppercase font-black tracking-[0.2em] opacity-50">Authorized Personnel Only // Get Leads Protocol Level 4</p>
                     </div>
                   </motion.div>
                 </div>
