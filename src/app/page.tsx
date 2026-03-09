@@ -9,6 +9,7 @@ import {
   Maximize2, Minimize2, Filter, ChevronDown, Plus, Check, Edit2
 } from 'lucide-react';
 import { SearchableCombobox } from '@/components/Combobox';
+import PixelBlast from '@/components/PixelBlast';
 import { INDUSTRIES, COUNTRIES, GEOGRAPHY } from '@/lib/constants';
 
 interface LogMessage {
@@ -468,7 +469,7 @@ export default function Home() {
     return (
       <div 
         onClick={handleMainCopy} 
-        className={`relative group p-3 rounded-xl border transition-all cursor-pointer overflow-visible ${
+        className={`relative group p-3 rounded-xl border transition-all cursor-pointer overflow-hidden ${
           isSelected 
             ? 'bg-indigo-500/10 border-indigo-500/40 shadow-[0_0_50px_rgba(99,102,241,0.1)]' 
             : 'bg-[#0f172a]/40 border-white/5 hover:border-white/10 hover:bg-[#1e293b]/40'
@@ -483,7 +484,6 @@ export default function Home() {
           </div>
         )}
 
-        <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-300 ${isSelected ? 'bg-indigo-500' : 'bg-transparent'}`} />
         
         <div className="flex justify-between items-start gap-4">
           <div className="flex gap-2.5 min-w-0">
@@ -932,14 +932,35 @@ export default function Home() {
   if (!isHydrated) return <div className="min-h-screen bg-[#020617] flex items-center justify-center font-mono text-indigo-500 animate-pulse">BOOTING_GET_LEADS_ENGINE...</div>;
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-300 font-sans p-2 selection:bg-indigo-500/30 overflow-x-hidden">
+    <div className="h-screen bg-[#020617] text-slate-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-3">
+        <PixelBlast
+          variant="triangle"
+          pixelSize={16}
+          color="#B19EEF"
+          patternScale={2}
+          patternDensity={1}
+          pixelSizeJitter={0}
+          enableRipples
+          rippleSpeed={0.4}
+          rippleThickness={0.12}
+          rippleIntensityScale={1.5}
+          liquid={false}
+          liquidStrength={0.12}
+          liquidRadius={1.2}
+          liquidWobbleSpeed={5}
+          speed={0.5}
+          edgeFade={0.25}
+          transparent
+        />
+      </div>
       
-      <div className="max-w-[1920px] mx-auto space-y-4">
+      <div className="h-[106.3%] max-w-[1920px] mx-auto p-4 flex flex-col space-y-4 relative z-10 scale-[0.94] origin-top transition-all duration-700">
         {/* Minimal Header */}
-        <header className="flex items-center justify-between px-6 py-2 glass rounded-2xl border border-white/5 mx-2 bg-slate-950/20">
+        <header className="flex items-center justify-between px-6 py-2 glass rounded-2xl border border-white/5 mx-2 bg-slate-950/20 shrink-0">
             <h1 className="text-lg font-black text-white tracking-tighter flex items-center gap-2">
               <Zap className="w-4 h-4 text-indigo-500 fill-current" />
-              GET<span className="text-indigo-500">LEADS</span>
+              <span className="flex items-center">GET<span className="text-indigo-500">_LEADS</span></span>
               <span className="text-[9px] text-slate-500 font-mono opacity-50 px-2 uppercase tracking-[0.3em]">Module_V4.1</span>
             </h1>
             <div className="flex items-center gap-4">
@@ -955,11 +976,11 @@ export default function Home() {
             </div>
         </header>
 
-        <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start px-2">
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch px-2 flex-1 min-h-0 pb-[10px]">
           
           {/* Column 1: Config */}
-          <section className="lg:col-span-3 space-y-4">
-            <div className="glass rounded-3xl p-5 border border-white/5 relative overflow-hidden flex flex-col h-[850px]">
+          <section className="lg:col-span-3 h-full min-h-0">
+            <div className="glass rounded-3xl p-5 border border-white/5 relative flex flex-col h-full">
               
               {/* Config Header */}
               <div className="mb-6">
@@ -1060,7 +1081,7 @@ export default function Home() {
               </form>
 
               {/* Terminal View */}
-              <div className="flex-1 bg-slate-950/80 rounded-2xl border border-white/5 overflow-hidden flex flex-col mt-6">
+              <div className="flex-1 bg-slate-950/80 rounded-2xl border border-white/5 overflow-hidden flex flex-col mt-6 mb-1">
                 <div className="bg-white/5 px-4 py-2.5 flex items-center justify-between border-b border-white/5">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -1099,8 +1120,8 @@ export default function Home() {
           </section>
 
           {/* Column 2: Buffer */}
-          <section className="lg:col-span-4 flex flex-col h-[850px]">
-             <div className="glass rounded-3xl overflow-hidden flex flex-col flex-1 border border-white/5 bg-slate-900/10">
+          <section className="lg:col-span-4 flex flex-col h-full min-h-0">
+             <div className="glass rounded-3xl flex flex-col flex-1 border border-white/5 bg-slate-900/10">
                 <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                    <div className="flex items-center gap-3">
                       <h2 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
@@ -1175,7 +1196,7 @@ export default function Home() {
                    </div>
                 </div>
 
-                <div className="flex-1 overflow-auto custom-scrollbar">
+                <div className="flex-1 overflow-auto custom-scrollbar rounded-b-3xl">
                    {sessionLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full opacity-10 gap-4">
                          <div className="w-12 h-12 border-2 border-dashed border-indigo-500 rounded-full animate-[spin_10s_linear_infinite]" />
@@ -1198,7 +1219,7 @@ export default function Home() {
           </section>
 
           {/* Column 3: Secured Vault */}
-          <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5 relative z-[200]'}`}>
+          <section className={`flex flex-col h-full min-h-0 transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5 relative z-[200]'}`}>
              <div className={`glass rounded-3xl flex flex-col flex-1 min-h-0 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5 relative z-[200]'}`}>
                    {/* Vault Header Container */}
                 <div className={`px-5 border-b border-white/5 flex flex-col transition-all relative z-[200] ${isVaultExpanded ? 'bg-slate-900/40' : 'bg-white/[0.02]'}`}>
@@ -1210,7 +1231,11 @@ export default function Home() {
                           </h2>
                           <div className="flex items-center gap-2">
                              <div className="h-4 w-[1px] bg-white/10" />
-                             <span className="text-[8px] text-slate-500 font-bold uppercase tracking-tight bg-white/5 px-2 py-0.5 rounded-md border border-white/5">{savedLeads.length} Records</span>
+                             <span className="text-[8px] text-slate-500 font-bold uppercase tracking-tight bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                               {selectedVaultIds.size > 0 
+                                 ? `${selectedVaultIds.size} SELECTED / ${savedLeads.length} TOTAL` 
+                                 : `${savedLeads.length} Records`}
+                             </span>
                           </div>
                       </div>
 
@@ -1394,7 +1419,7 @@ export default function Home() {
                 </div>
                    
                 {/* Vault Content */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0 relative z-[1]">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0 relative z-[1] rounded-b-3xl">
                    {savedLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full opacity-10 gap-4">
                         <Database className="w-16 h-16" />
