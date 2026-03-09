@@ -90,7 +90,7 @@ function CommandSelect({
             animate={{ opacity: 1, y: 5, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute z-[300] top-full left-0 w-full min-w-[160px] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
+            className="absolute z-[1000] top-full left-0 mt-[6px] w-full min-w-[180px] bg-[#020617] border border-white/15 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-auto"
           >
             <div className="max-h-[250px] overflow-auto custom-scrollbar p-1.5">
               {options.map((option) => {
@@ -143,6 +143,7 @@ export default function Home() {
   const [vaultMinRating, setVaultMinRating] = useState(0);
   const [vaultSocialFilter, setVaultSocialFilter] = useState<'ALL' | 'WITH' | 'WITHOUT'>('ALL');
   const [vaultSort, setVaultSort] = useState<'NEWEST' | 'RATING' | 'NAME'>('NEWEST');
+  const [isVaultFiltersVisible, setIsVaultFiltersVisible] = useState(true);
   const [autoSave, setAutoSave] = useState(false);
   const [allowGlobalDuplicates, setAllowGlobalDuplicates] = useState(false);
 
@@ -207,7 +208,7 @@ export default function Home() {
       const matchesCity = vaultCity === 'ALL' || lead.city === vaultCity;
       const matchesRating = (lead.rating || 0) >= vaultMinRating;
       
-      const hasSocials = lead.socials && lead.socials.trim().length > 0;
+      const hasSocials = !!(lead.socials && lead.socials.split(',').filter(s => s.trim().length > 0).length > 0);
       const matchesSocial = vaultSocialFilter === 'ALL' || 
         (vaultSocialFilter === 'WITH' ? hasSocials : !hasSocials);
       
@@ -221,7 +222,7 @@ export default function Home() {
       // NEWEST: Use savedAt if available, or just original order (which is usually newest based on DB)
       return new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime();
     });
-  }, [savedLeads, vaultSearch, vaultCategory, vaultCountry, vaultCity, vaultMinRating, vaultSort]);
+  }, [savedLeads, vaultSearch, vaultCategory, vaultCountry, vaultCity, vaultMinRating, vaultSort, vaultSocialFilter]);
 
   const vaultCategories = useMemo(() => {
     const cats = new Set(savedLeads.map(l => l.category).filter(Boolean));
@@ -403,12 +404,32 @@ export default function Home() {
       return lead.socials.split(',').map(s => s.trim()).filter(Boolean);
     }, [lead.socials]);
 
-    const performCopy = (e: React.MouseEvent, text: string) => {
+    const performCopy = async (e: React.MouseEvent, text: string) => {
       e.stopPropagation();
       if (!text) return;
-      navigator.clipboard.writeText(text);
-      setCopyFeedback({ x: e.clientX, y: e.clientY });
-      setTimeout(() => setCopyFeedback(null), 1200);
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopyFeedback({ x: e.clientX, y: e.clientY });
+        setTimeout(() => setCopyFeedback(null), 1200);
+      } catch (err) {
+        console.error('Clipboard copy failed:', err);
+        // Fallback for when document is not focused or other errors
+        try {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          textArea.remove();
+          setCopyFeedback({ x: e.clientX, y: e.clientY });
+          setTimeout(() => setCopyFeedback(null), 1200);
+        } catch (fbErr) {
+          console.error('Fallback copy failed:', fbErr);
+        }
+      }
     };
 
     const handleMainCopy = (e: React.MouseEvent) => {
@@ -1142,7 +1163,7 @@ export default function Home() {
           <section className={`flex flex-col h-[850px] transition-all duration-500 ease-in-out ${isVaultExpanded ? 'fixed inset-0 z-[100] p-6 bg-slate-950/90 backdrop-blur-xl' : 'lg:col-span-5'}`}>
              <div className={`glass rounded-3xl overflow-hidden flex flex-col flex-1 min-h-0 border transition-all duration-500 ${isVaultExpanded ? 'border-indigo-500/30 bg-[#020617]/80 shadow-[0_0_100px_rgba(79,70,229,0.15)] ring-1 ring-white/5' : 'border-indigo-500/10 bg-indigo-950/5'}`}>
                    {/* Vault Header Container */}
-                <div className={`px-5 border-b border-white/5 flex flex-col transition-all ${isVaultExpanded ? 'bg-slate-900/40' : 'bg-white/[0.02]'}`}>
+                <div className={`px-5 border-b border-white/5 flex flex-col transition-all relative z-[200] ${isVaultExpanded ? 'bg-slate-900/40' : 'bg-white/[0.02]'}`}>
                    {/* Row 1: Identification & Controls */}
                    <div className={`flex items-center justify-between transition-all ${isVaultExpanded ? 'py-4' : 'py-3'}`}>
                       <div className="flex items-center gap-3">
@@ -1215,6 +1236,14 @@ export default function Home() {
                          <div className="w-[1px] h-3 bg-white/10 mx-1.5" />
                          
                          <button 
+                            onClick={() => setIsVaultFiltersVisible(!isVaultFiltersVisible)}
+                            className={`p-1 rounded-md transition-all ${isVaultFiltersVisible ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            title={isVaultFiltersVisible ? "Hide Filters" : "Show Filters"}
+                         >
+                            <Filter className="w-3.5 h-3.5" />
+                         </button>
+                         
+                         <button 
                             onClick={() => setIsVaultExpanded(!isVaultExpanded)}
                             className={`p-1 rounded-md transition-all ${isVaultExpanded ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                          >
@@ -1224,104 +1253,111 @@ export default function Home() {
                    </div>
 
                    {/* Dashboard Filter Bar - High-Density Minimal Version */}
-                   {isVaultExpanded && (
-                     <div className="pb-4 animate-in fade-in slide-in-from-top-2 duration-500 ease-out">
-                        <div className="bg-slate-950/40 backdrop-blur-3xl p-3 rounded-3xl border border-white/10 flex flex-col gap-3">
-                           
-                           {/* Primary Intelligence Search */}
-                           <div className="flex items-center gap-3">
-                              <div className="relative group/search flex-1">
-                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                                    <Search className="w-3.5 h-3.5 text-emerald-500/50 group-focus-within/search:text-emerald-400 transition-colors" />
-                                 </div>
-                                 <input 
-                                    type="text"
-                                    value={vaultSearch}
-                                    onChange={(e) => setVaultSearch(e.target.value)}
-                                    placeholder="Execute Deep Search..."
-                                    className="w-full bg-black/40 border border-white/5 focus:border-emerald-500/30 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black text-white focus:outline-none transition-all uppercase tracking-widest placeholder:text-slate-600 shadow-inner"
-                                 />
-                              </div>
-
-                              <button 
-                                 onClick={() => {
-                                    setVaultSearch(''); setVaultCategory('ALL');
-                                    setVaultCountry('ALL'); setVaultCity('ALL');
-                                    setVaultMinRating(0); setVaultSocialFilter('ALL');
-                                    setVaultSort('NEWEST');
-                                 }}
-                                 className="h-9 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10 text-rose-500 text-[9px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2 group/flush"
-                                 title="Clear Activity Filters"
-                              >
-                                 <X className="w-3 h-3 group-hover:rotate-90 transition-all" />
-                                 Reset Filters
-                              </button>
-                           </div>
-
-                           {/* Precision Filter Matrix - Compact Grid */}
-                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                              <CommandSelect 
-                                 value={vaultCategory}
-                                 onChange={setVaultCategory}
-                                 options={vaultCategories.map(cat => ({ value: cat, label: String(cat === 'ALL' ? 'Sector' : cat) }))}
-                                 placeholder="Sector"
-                                 className="w-full"
-                              />
-                              <CommandSelect 
-                                 value={vaultCountry}
-                                 onChange={(val) => { setVaultCountry(val); setVaultCity('ALL'); }}
-                                 options={vaultCountries.map(c => ({ value: c, label: String(c === 'ALL' ? 'Nation' : c) }))}
-                                 placeholder="Nation"
-                                 className="w-full"
-                              />
-                              <CommandSelect 
-                                 value={vaultCity}
-                                 onChange={setVaultCity}
-                                 options={vaultCities.map(c => ({ value: c, label: String(c === 'ALL' ? 'Hub' : c) }))}
-                                 placeholder="Hub"
-                                 className="w-full"
-                              />
-                              <CommandSelect 
-                                 value={vaultMinRating}
-                                 onChange={(val) => setVaultMinRating(Number(val))}
-                                 options={[
-                                    { value: 0, label: 'Signal' },
-                                    { value: 4, label: '4.0+' },
-                                    { value: 4.5, label: '4.5+' }
-                                 ]}
-                                 placeholder="Signal"
-                                 className="w-full"
-                              />
-                              <CommandSelect 
-                                 value={vaultSocialFilter}
-                                 onChange={setVaultSocialFilter}
-                                 options={[
-                                    { value: 'ALL', label: 'Matrix' },
-                                    { value: 'WITH', label: 'Social' },
-                                    { value: 'WITHOUT', label: 'None' }
-                                 ]}
-                                 placeholder="Matrix"
-                                 className="w-full"
-                              />
-                              <CommandSelect 
-                                 value={vaultSort}
-                                 onChange={setVaultSort}
-                                 options={[
-                                    { value: 'NEWEST', label: 'Recency' },
-                                    { value: 'RATING', label: 'Rating' },
-                                    { value: 'NAME', label: 'Name' }
-                                 ]}
-                                 placeholder="Sorting"
-                                 className="w-full"
-                              />
-                           </div>
-                        </div>
-                     </div>
-                   )}
+                   <AnimatePresence>
+                     {isVaultFiltersVisible && (
+                       <motion.div 
+                         initial={{ height: 0, opacity: 0 }}
+                         animate={{ height: 'auto', opacity: 1 }}
+                         exit={{ height: 0, opacity: 0 }}
+                         className="pb-4 overflow-hidden"
+                       >
+                         <div className="bg-slate-950/40 backdrop-blur-3xl p-3 rounded-3xl border border-white/10 flex flex-col gap-3">
+                            
+                            {/* Vault Intelligence Search */}
+                            <div className="flex items-center gap-3">
+                               <div className="relative group/search flex-1">
+                                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                     <Search className="w-3.5 h-3.5 text-emerald-500/50 group-focus-within/search:text-emerald-400 transition-colors" />
+                                  </div>
+                                  <input 
+                                     type="text"
+                                     value={vaultSearch}
+                                     onChange={(e) => setVaultSearch(e.target.value)}
+                                     placeholder="Search leads, categories, or cities..."
+                                     className="w-full bg-black/40 border border-white/5 focus:border-emerald-500/30 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black text-white focus:outline-none transition-all uppercase tracking-widest placeholder:text-slate-600 shadow-inner"
+                                  />
+                               </div>
+ 
+                               <button 
+                                  onClick={() => {
+                                     setVaultSearch(''); setVaultCategory('ALL');
+                                     setVaultCountry('ALL'); setVaultCity('ALL');
+                                     setVaultMinRating(0); setVaultSocialFilter('ALL');
+                                     setVaultSort('NEWEST');
+                                  }}
+                                  className="h-9 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10 text-rose-500 text-[9px] font-black uppercase hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2 group/flush"
+                                  title="Reset All Intelligence Filters"
+                               >
+                                  <X className="w-3 h-3 group-hover:rotate-90 transition-all" />
+                                  Reset
+                               </button>
+                            </div>
+ 
+                            {/* Filter Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 relative z-[100]">
+                               <CommandSelect 
+                                  value={vaultCategory}
+                                  onChange={setVaultCategory}
+                                  options={vaultCategories.map(cat => ({ value: cat, label: String(cat === 'ALL' ? 'All Categories' : cat) }))}
+                                  placeholder="Category"
+                                  className="w-full"
+                               />
+                               <CommandSelect 
+                                  value={vaultCountry}
+                                  onChange={(val) => { setVaultCountry(val); setVaultCity('ALL'); }}
+                                  options={vaultCountries.map(c => ({ value: c, label: String(c === 'ALL' ? 'All Countries' : c) }))}
+                                  placeholder="Country"
+                                  className="w-full"
+                               />
+                               <CommandSelect 
+                                  value={vaultCity}
+                                  onChange={setVaultCity}
+                                  options={vaultCities.map(c => ({ value: c, label: String(c === 'ALL' ? 'All Cities' : c) }))}
+                                  placeholder="City"
+                                  className="w-full"
+                               />
+                               <CommandSelect 
+                                  value={vaultMinRating}
+                                  onChange={(val) => setVaultMinRating(Number(val))}
+                                  options={[
+                                     { value: 0, label: 'Min Rating: Any' },
+                                     { value: 4, label: 'Min Rating: 4+' },
+                                     { value: 4.5, label: 'Min Rating: 4.5+' }
+                                  ]}
+                                  placeholder="Rating"
+                                  className="w-full"
+                               />
+                               <CommandSelect 
+                                  value={vaultSocialFilter}
+                                  onChange={setVaultSocialFilter}
+                                  options={[
+                                     { value: 'ALL', label: 'Social Media: All' },
+                                     { value: 'WITH', label: 'Has Socials' },
+                                     { value: 'WITHOUT', label: 'No Socials' }
+                                  ]}
+                                  placeholder="Socials"
+                                  className="w-full"
+                               />
+                               <CommandSelect 
+                                  value={vaultSort}
+                                  onChange={setVaultSort}
+                                  options={[
+                                     { value: 'NEWEST', label: 'Sort: Newest' },
+                                     { value: 'RATING', label: 'Sort: Top Rated' },
+                                     { value: 'NAME', label: 'Sort: Name (A-Z)' }
+                                  ]}
+                                  placeholder="Sort By"
+                                  className="w-full"
+                               />
+                            </div>
+                         </div>
+                       </motion.div>
+                     )}
+                   </AnimatePresence>
                 </div>
                    
                 {/* Vault Content */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0 relative z-[1]">
                    {savedLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full opacity-10 gap-4">
                         <Database className="w-16 h-16" />
