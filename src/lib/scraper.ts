@@ -28,7 +28,7 @@ function emitLead(jobId: string, lead: any) {
 function emitEnd(jobId: string, success: boolean) {
   scraperEvents.emit('log', {
     jobId, type: success ? 'END' : 'ERROR',
-    message: success ? 'Scraping Process Terminated' : 'Discovery failed abruptly'
+    message: success ? 'Scraping Process Terminated' : 'Get Leads extraction failed abruptly'
   });
 }
 
@@ -334,7 +334,7 @@ export async function runScrapeJob(params: ScrapeParams) {
                 const finalLead = {
                     businessName, website, email: emails.join(', '), phone, address: '', 
                     googleMapsLink: await element.getAttribute('href'), city, country,
-                    source: 'Deep Discovery Engine v3', category, socials: socials.join(', '),
+                    source: 'Get Leads Engine v4.1', category, socials: socials.join(', '),
                     rating, reviews, image
                 };
 

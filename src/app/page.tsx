@@ -6,7 +6,7 @@ import {
   Download, Trash, Search, Database, 
   CheckCircle, Star, Globe, Facebook, Instagram, Linkedin, Twitter,
   History, Zap, X, CheckSquare, Square, Mail, Phone, Share2,
-  Maximize2, Minimize2, Filter, ChevronDown, Plus, Check
+  Maximize2, Minimize2, Filter, ChevronDown, Plus, Check, Edit2
 } from 'lucide-react';
 import { SearchableCombobox } from '@/components/Combobox';
 import { INDUSTRIES, COUNTRIES, GEOGRAPHY } from '@/lib/constants';
@@ -155,6 +155,8 @@ export default function Home() {
   const [moveTargetId, setMoveTargetId] = useState<number | null>(null);
   const [newCrateName, setNewCrateName] = useState('');
   const [dbToDelete, setDbToDelete] = useState<number | null>(null);
+  const [dbToRename, setDbToRename] = useState<number | null>(null);
+  const [renamedValue, setRenamedValue] = useState('');
 
   // Export Modal State
   const [exportModal, setExportModal] = useState<{ isOpen: boolean, data: Lead[], filename: string }>({
@@ -281,6 +283,18 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
+      });
+      if (res.ok) fetchDatabases();
+    } catch (e) {}
+  };
+
+  const renameDatabase = async (id: number, name: string) => {
+    if (!name) return;
+    try {
+      const res = await fetch('/api/databases', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name })
       });
       if (res.ok) fetchDatabases();
     } catch (e) {}
@@ -725,7 +739,7 @@ export default function Home() {
     setIsScraping(true);
     setLogs([
       { jobId: 'loading', type: 'LOG', level: 'ACTION', message: '🛠️ [ENGINE] Initializing Local Intelligence...', timestamp: new Date().toISOString() },
-      { jobId: 'loading', type: 'LOG', level: 'SUCCESS', message: '📡 [NETWORK] Handshake established with cloud Discovery cluster.', timestamp: new Date().toISOString() },
+      { jobId: 'loading', type: 'LOG', level: 'SUCCESS', message: '📡 [NETWORK] Handshake established with cloud Intelligence cluster.', timestamp: new Date().toISOString() },
     ]);
     setSessionLeads([]);
     setSelectedSessionIds(new Set());
@@ -1067,7 +1081,7 @@ export default function Home() {
                 <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                    <div className="flex items-center gap-3">
                       <h2 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
-                          <Zap className="w-3 h-3 text-amber-500" /> LIVE_Discovery
+                          <Zap className="w-3 h-3 text-amber-500" /> LIVE_Get_Leads
                       </h2>
                    </div>
                    <div className="flex items-center gap-1">
@@ -1104,12 +1118,13 @@ export default function Home() {
                               setSelectedSessionIds(new Set()); 
                             }}
                             className="p-1 px-2 bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 text-rose-500 hover:text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-tighter"
-                            title="Clear Discovery Buffer Without Saving"
+                            title="Clear Buffer"
                           >
                             Clear Buffer
                           </button>
                         </>
                       )}
+
                       
                       {selectedSessionIds.size > 0 && (
                         <div className="flex items-center gap-1 p-0.5 bg-indigo-500/5 rounded-lg border border-white/5 ml-2">
@@ -1466,40 +1481,82 @@ export default function Home() {
                                </div>
                                
                                <div className="flex items-center gap-1">
-                                  {db.id !== 1 && (
-                                     dbToDelete === db.id ? (
-                                        <div className="flex items-center gap-1.5 animate-in zoom-in duration-300">
-                                           <button 
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                deleteDatabase(db.id);
-                                                setDbToDelete(null);
-                                              }} 
-                                              className="bg-rose-500 hover:bg-rose-600 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg transition-all shadow-lg shadow-rose-900/20"
-                                           >
-                                              Sure?
-                                           </button>
-                                           <button 
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setDbToDelete(null);
-                                              }} 
-                                              className="p-1 px-2 text-slate-500 hover:text-white text-[8px] font-black uppercase tracking-tighter"
-                                           >
-                                              Cancel
-                                           </button>
-                                        </div>
-                                     ) : (
-                                        <button 
-                                           onClick={(e) => {
-                                             e.stopPropagation();
-                                             setDbToDelete(db.id);
-                                           }} 
-                                           className="p-2 text-slate-700 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                        >
-                                           <Trash className="w-3.5 h-3.5" />
-                                        </button>
-                                     )
+                                  {dbToRename === db.id ? (
+                                    <div className="flex items-center gap-1 animate-in zoom-in duration-300">
+                                       <input 
+                                          autoFocus
+                                          type="text" 
+                                          value={renamedValue} 
+                                          onChange={(e) => setRenamedValue(e.target.value)}
+                                          className="bg-black/40 border border-indigo-500/50 rounded-lg px-2 py-1 text-[9px] font-black text-white focus:outline-none w-32"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              renameDatabase(db.id, renamedValue);
+                                              setDbToRename(null);
+                                            } else if (e.key === 'Escape') {
+                                              setDbToRename(null);
+                                            }
+                                          }}
+                                       />
+                                       <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            renameDatabase(db.id, renamedValue);
+                                            setDbToRename(null);
+                                          }}
+                                          className="p-1.5 bg-indigo-500 text-white rounded-lg"
+                                       >
+                                          <Check className="w-3 h-3" />
+                                       </button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                       <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDbToRename(db.id);
+                                            setRenamedValue(db.name);
+                                          }} 
+                                          className="p-2 text-slate-700 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                       >
+                                          <Edit2 className="w-3.5 h-3.5" />
+                                       </button>
+                                       {db.id !== 1 && (
+                                          dbToDelete === db.id ? (
+                                             <div className="flex items-center gap-1.5 animate-in zoom-in duration-300">
+                                                <button 
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     deleteDatabase(db.id);
+                                                     setDbToDelete(null);
+                                                   }} 
+                                                   className="bg-rose-500 hover:bg-rose-600 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg transition-all shadow-lg shadow-rose-900/20"
+                                                >
+                                                   Sure?
+                                                </button>
+                                                <button 
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     setDbToDelete(null);
+                                                   }} 
+                                                   className="p-1 px-2 text-slate-500 hover:text-white text-[8px] font-black uppercase tracking-tighter"
+                                                >
+                                                   Cancel
+                                                </button>
+                                             </div>
+                                          ) : (
+                                             <button 
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setDbToDelete(db.id);
+                                                }} 
+                                                className="p-2 text-slate-700 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                             >
+                                                <Trash className="w-3.5 h-3.5" />
+                                             </button>
+                                          )
+                                       )}
+                                    </>
                                   )}
                                </div>
                             </div>

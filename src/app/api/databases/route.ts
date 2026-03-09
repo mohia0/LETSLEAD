@@ -40,3 +40,15 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'Failed to delete database' }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const { id, name } = await req.json();
+    if (!id || !name) return NextResponse.json({ error: 'ID and Name are required' }, { status: 400 });
+    
+    db.prepare('UPDATE databases SET name = ? WHERE id = ?').run(name, id);
+    return NextResponse.json({ success: true, id, name });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to rename database' }, { status: 500 });
+  }
+}

@@ -21,8 +21,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GetLeads | Real-time Lead Discovery",
-  description: "Advanced local business intelligence and lead discovery tool.",
+  title: "GetLeads | Real-time Lead Intelligence",
+  description: "Advanced local business intelligence and lead generation tool.",
 };
 
 export default function RootLayout({
